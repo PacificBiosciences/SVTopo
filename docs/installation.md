@@ -1,10 +1,13 @@
 ## Installation 
-**This section is under construction**
 
-The `svtopo` Rust utility is available from the GitHub Releases page. It requires no installation on Linux systems and can be directly invoked as described in the **Quick Start** section of [HiFi-SVTopo usage](docs/svtopo_usage.md)
+The `svtopo` Rust utility is available from the [Releases](https://github.com/PacificBiosciences/HiFi-SVTopo/releases) page.
+
+It can be downloaded and run directly on Linux systems, as described in the **Quick Start** section of [HiFi-SVTopo usage](docs/svtopo_usage.md)
 
 
-The `svtopovz` utility can be installed by cloning and installing from source. It is recommended that this tool be installed in a fresh [Conda](https://conda.io/projects/conda/en/latest/index.html) environment with Python=3.10.
+The `svtopovz` utility can be downloaded by cloning this reposity with git or by downloading the `Source code (zip)` or `Source code (tar.gz)` assets from the [Releases](https://github.com/PacificBiosciences/HiFi-SVTopo/releases) page.
+
+It can then be isntalled from source as shown below. It is recommended that this tool be installed in a fresh [Conda](https://conda.io/projects/conda/en/latest/index.html) environment with Python=3.10.
 
 Installation from source:
 ```bash
