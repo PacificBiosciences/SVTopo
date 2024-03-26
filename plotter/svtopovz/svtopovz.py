@@ -5,7 +5,7 @@ import gzip
 import json
 import os
 import sys
-from cnidaria_plotter import bnd_plotter
+from svtopovz import bnd_plotter
 import logging
 
 logger = logging.getLogger(__name__)
@@ -100,7 +100,7 @@ def unpack_bed_records(bed_filename):
     return bed_records
 
 
-def cnidaria_plotter(args):
+def svtopovz(args):
     sv_info = unpack_json(args.json)
     bed_records = unpack_bed_records(args.bed)
     for count, event_info in enumerate(sv_info):

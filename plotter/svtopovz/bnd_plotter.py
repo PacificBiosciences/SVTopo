@@ -3,8 +3,8 @@
 import re
 import sys
 import matplotlib.pyplot as plt
-from cnidaria_plotter import bed_plotter
-from cnidaria_plotter import chain_plotter
+from svtopovz import bed_plotter
+from svtopovz import chain_plotter
 import numpy as np
 import logging
 

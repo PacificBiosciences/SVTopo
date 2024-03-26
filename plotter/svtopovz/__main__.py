@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from .__init__ import __version__
-from .cnidaria_plotter import cnidaria_plotter
+from .svtopovz import svtopovz
 
 
 def valid_file(filepath):
@@ -26,7 +26,7 @@ def valid_prefix(prefix):
 
 def setup_args():
     parser = argparse.ArgumentParser(
-        prog="cnidaria_plotter", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        prog="svtopovz", formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
         "-v",
@@ -38,7 +38,7 @@ def setup_args():
     parser.add_argument(
         "-j",
         "--json",
-        help="path to json-formatted complex SV data, extracted from BAM file using cnidaria. GZIP allowed.",
+        help="path to json-formatted complex SV data, extracted from BAM file using SVTopo. GZIP allowed.",
         required=True,
         type=valid_file,
     )
@@ -71,7 +71,7 @@ def setup_args():
 
 
 def main():
-    print("\nCNIDARIA_PLOTTER v{}".format(__version__), file=sys.stderr)
+    print("\nSVTopoVz v{}".format(__version__), file=sys.stderr)
     parser = setup_args()
     args = parser.parse_args()
 
@@ -89,7 +89,7 @@ def main():
         )
         sys.exit()
 
-    cnidaria_plotter(args)
+    svtopovz(args)
 
 
 if __name__ == "__main__":
