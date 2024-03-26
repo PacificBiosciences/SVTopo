@@ -13,7 +13,6 @@ Cnidaria is distributed as two complimentary tools, both necesary for the two-st
 * [Cnidaria usage](docs/cnidaria_usage.md)
 * [Cnidaria plotter usage](docs/cnidaria_plotter_usage.md)
 * [Results and interpretation](docs/result_interpretation.md)
-* [Snakemake workflow](docs/snakemake_workflow.md)
 
 
 ## Support information

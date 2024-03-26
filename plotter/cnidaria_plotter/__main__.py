@@ -12,6 +12,18 @@ from .__init__ import __version__
 from .cnidaria_plotter import cnidaria_plotter
 
 
+def valid_file(filepath):
+    if not path.exists(filepath) and path.isfile(filepath):
+        return False
+    return filepath
+
+
+def valid_prefix(prefix):
+    if not path.exists(path.dirname(prefix)) and path.isfile(path.dirname(prefix)):
+        return False
+    return prefix
+
+
 def setup_args():
     parser = argparse.ArgumentParser(
         prog="cnidaria_plotter", formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -28,18 +40,20 @@ def setup_args():
         "--json",
         help="path to json-formatted complex SV data, extracted from BAM file using cnidaria. GZIP allowed.",
         required=True,
+        type=valid_file,
     )
     parser.add_argument(
         "-p",
         "--out-prefix",
         help="prefix for output files. May include a directory path.",
-        required=True,
+        required=valid_prefix,
     )
     parser.add_argument(
         "-b",
         "--bed",
         help="paths to genome annotations in BED file format",
         required=False,
+        type=valid_file,
     )
     parser.add_argument(
         "--image-type",

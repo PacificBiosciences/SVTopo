@@ -2,9 +2,6 @@ import re
 
 from setuptools import setup
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
 with open("cnidaria_plotter/__init__.py", "r") as fd:
     version = re.search(
         r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', fd.read(), re.MULTILINE
@@ -18,13 +15,11 @@ setup(
     name="cnidaria_plotter",
     version=version,
     description="command line tool for generating vizualizations of complex structural variation",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
     author="Jonathan Belyeu",
     author_email="jbelyeu@pacificbiosciences.com",
     url="",
     packages=["cnidaria_plotter"],
-    package_data={"": ["LICENSE", "README.md"]},
+    package_data={"": ["LICENSE", "readme.md"]},
     include_package_data=True,
     install_requires=requires,
     license="BSD",

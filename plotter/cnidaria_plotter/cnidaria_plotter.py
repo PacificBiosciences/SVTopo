@@ -30,10 +30,18 @@ def unpack_json(json_filename):
             logger.error("{} is identified as gzipped but is not".format(json_filename))
             sys.exit()
         with gzip.open(json_filename, "rt", encoding="UTF-8") as json_fh:
-            return json.load(json_fh)
+            try:
+                return json.load(json_fh)
+            except json.decoder.JSONDecodeError:
+                logger.error(" {} is empty or misformatted".format(json_filename))
+                sys.exit()
     else:
         with open(json_filename, "r") as json_fh:
-            return json.load(json_fh)
+            try:
+                return json.load(json_fh)
+            except json.decoder.JSONDecodeError:
+                logger.error(" {} is empty or misformatted".format(json_filename))
+                sys.exit()
 
 
 def unpack_bed_records(bed_filename):
