@@ -45,3 +45,6 @@ SVTopoVz processed the json file from running SVTopo on a 30x HiFi genome in def
 ### `--keep-dels` mode
 * 3m35s run time
 * 385 images generated
+
+#### Algorithm notes:
+* Undersized blocks: SVTopoVZ is intended to display structural rearrangements, but it may in some cases also show quite small insertion/deletion evidence. These may represent real rearrangements or small alignment errors. These are omitted from plots if under 10bp in length, but they are still assigned a letter in chain plots to allow inference of their existence. A chain plot showing blocks labeled A, B, and D therefore also has a block C that is not shown.
