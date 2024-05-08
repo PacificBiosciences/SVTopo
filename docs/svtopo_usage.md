@@ -53,7 +53,7 @@ SVTopo was tested with a 30x HiFi genome, in default mode and with the `--keep-d
 * 385 images generated
 
 ## Algorithm notes
-* Clipped alignments: SVTopo uses chimeric/split alignments to identify signals of structural variation. These are defined as alignments with at least 100 bases of soft-clipping on either end of the alignment. ALignments with MAPQ < 20 are omitted.
+* Clipped alignments: SVTopo uses chimeric/split alignments to identify signals of structural variation. These are defined as alignments with at least 100 bases of soft-clipping on either end of the alignment. Alignments with MAPQ < 20 are omitted.
 * Break clusters: Locations of genomic breaks are identified using alignment clipping locations that are the same or nearly the same. These are defined as being within 10 bp of each other, allowing for small differences of alignment and minimal sequencing error. Break cluster positions are given from the middle of the clip sites among alignments within 10 bp.
 * Phase filter: If the --allow-unphased option is not set, break clusters are only included if the phase if unambiguous. That is defined as having exactly one haplotype ID and one phaseset ID, with at least 2 phased alignments. Unphased alignments may also be included.
 * Break connections: Once breaks are identified, they can be connected in pairwise fashion by alignments that are shared between them. A minimum of two such shared alignments is required to make a connection and they must be within 1 mb of each other.
