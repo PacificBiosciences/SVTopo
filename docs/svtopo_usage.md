@@ -37,8 +37,8 @@ In some cases, regions of the genome may prove difficult to phase even with HiPh
 SVTopo was benchmarked with a 30x HiFi genome, in default mode and with the `--no-filter` option:
 
 #### Default mode
-* 88m16s run time
-* n SV entries in JSON
+* 91m42s run time
+* 586 SV entries in JSON
 
 #### No-filter mode
 * 10m43s run time
