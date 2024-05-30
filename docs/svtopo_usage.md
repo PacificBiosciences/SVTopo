@@ -19,6 +19,7 @@ Options:
 Copyright (C) 2004-2024     Pacific Biosciences of California, Inc.
 This program comes with ABSOLUTELY NO WARRANTY; it is intended for
 Research Use Only and not for use in diagnostic procedures.```
+```
 
 **BAM parsing example**
 Execution example (replace paths with your own):
