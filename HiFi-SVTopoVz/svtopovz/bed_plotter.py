@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def annotate(bed_records, region, ax):
+def annotate_bed_records(bed_records, region, ax):
     """
     Add bedfile annotations to the plot for this region
     """
@@ -18,7 +18,7 @@ def annotate(bed_records, region, ax):
     annotation_bottom = 0.2
     arrows_per_window = 50
     title_char_per_window = 175
-    region_length = region["end"] - region["start"]
+    region_length = region.end - region.start
     for bed_record in region_bed_records:
         annotation_len = bed_record.end - bed_record.start
         annotation_fract = annotation_len / region_length
@@ -127,11 +127,11 @@ def get_region_bed_records(bed_records, region):
     region_records = []
     if bed_records is None:
         return
-    chrom = (region["chrom"]).lower()
+    chrom = (region.chrom).lower()
     if chrom not in bed_records:
         return region_records
-    start = region["start"]
-    end = region["end"]
+    start = region.start
+    end = region.end
     chrom_records = bed_records[chrom]
     region_start_idx = binary_get_start_index(chrom_records, start)
 

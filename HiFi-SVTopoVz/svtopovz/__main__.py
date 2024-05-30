@@ -62,10 +62,26 @@ def setup_args():
         choices=["png", "jpg", "jpeg", "svg", "pdf"],
     )
     parser.add_argument(
+        "--max-gap-size-mb",
+        help="maximum gap size to show in one panel, in megabases. Default is entire chromosome",
+        default=0,
+        type=float,
+    )
+    parser.add_argument(
         "--log-level",
         help="set log level",
         choices=["debug", "info"],
         default="info",
+    )
+    parser.add_argument(
+        "--ignore-simple-dels",
+        help="identifies simple deletions (defined as having exactly two forward spanned blocks, one forward unspanned) and skips them",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--ignore-simple-dups",
+        help="identifies simple duplications (defined as having exactly two forward spanned blocks, one reverse unspanned) and skips them",
+        action="store_true",
     )
     return parser
 
