@@ -2,7 +2,7 @@
 
 SVTopo is a software tool designed to improve visual review of complex structural variation using PacBio HiFi data. SVTopo scans through aligned HiFi reads (whole-genome BAM or partial/BAMlet data) to identify breakends, outputs connected breakends as JSON data, and plots the connected complex structural rearrangements as high-quality images:
 
-![](docs/imgs/dup_example.png)
+![](docs/imgs/complex_fully_connected.png)
 
 HiFi-SVTopo is distributed as two interdependent tools, both necesary for the two-step image generation process:
 - HiFi-SVTopo (`svtopo`): a Rust binary for fast BAM parsing into small JSON files. `svtopo` is pronounced "es-vee-tope-oh"
