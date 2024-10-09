@@ -1,4 +1,18 @@
-## Installation 
+## Overview
+SVTopo creates images to represent chimeric/split alignment evidence for structural variation, with an emphasis on complex variants. For the purposes of SVTopo, these are defined as SVs large enough to for the PBMM2 aligner to align reads in in multiple chimeric alignments. Novel insertions are not supported and by default simple deletions and duplications are omitted from results. Complex SVs in SVTopo therefore consist of inversions, translocations, and multi-breakend combinations of simple rearrangements.
+
+
+__Processing steps:__
+1. Extract reads flagged with the BAM split alignment tag (`SA`)
+2. Identify coordinates where alignment clipping sites from multiple reads are clustered
+3. Connect pairs of coordinates that are joined by alignments
+4. Further connect these pairs to generate graphs of breakends that define structural rearrangements
+5. Emit graph representations as a JSON file
+
+
+## Result interpretation
+
+## Getting started 
 
 ### HiFi-SVTopo
 The `svtopo` Rust utility is available from the [Releases](https://github.com/PacificBiosciences/HiFi-SVTopo/releases) page.
@@ -47,3 +61,8 @@ options:
                         does not skip simple deletions (defined as having exactly two forward spanned blocks, one forward unspanned) (default: False)
   --include-simple-dups
                         does not skip simple duplications (defined as having exactly two forward spanned blocks, one reverse unspanned) (default: False)
+
+```
+## Outputs
+
+## Usage details
