@@ -1,6 +1,6 @@
 ## SVTopo BAM parsing
 
-### Quick Start
+### Getting started
 **Input:** The SVTopo utility requires phased HiFi BAM input. Phasing with [HiPhase](https://github.com/PacificBiosciences/HiPhase) is strongly recommended and results may be negatively impacted if a different phasing tool is used.
 
 ```
