@@ -1,18 +1,29 @@
+## :loudspeaker: Project Announcement
+
+This project will be presented at the **American Society of Human Genetics 2024** conference in Denver, CO at **Poster 1180W**.
+
+
 <h1 align="center">SVTopo</h1>
 
 <h4 align="center">Complex structural variant visualization for HiFi sequencing data</h3>
 
 SVTopo represents complex structural variants (SVs) to enhance PacBio HiFi data. SVTopo determines connections between SV breakends using aligned reads and, optionally, variant calling output from the [sawfish](https://github.com/PacificBiosciences/sawfish) variant caller. SVTopo outputs connected breakends as JSON data and uses the SVTopoVz python utility to plot complex structural rearrangements as high-quality images.
 
+Key Features:
+* Block block of connected aligned sequences, showing order and orientation in the sample genome relative to the reference
+  * Alignment support strength shown by block weight
+  * Block sizes encoded into legend
+* Chained plot highlighting deletion, duplication, and inversion effects on resulting rearranged genome structure
 ![](docs/imgs/complex_fully_connected.png)
+
+Components:
 
 SVTopo is distributed as two interdependent tools, both necesary for the two-step image generation process:
 - SVTopo: a Rust binary for fast BAM parsing into small JSON files. `svtopo` is pronounced "es-vee-tope-oh"
 - SVTopoVz: a Python plotter for the JSON data. `svtopovz` is pronounced "es-vee-tope-oh-viz"
 
-## Documentation
-* [User Guide](docs/user_guide.md)
-* [Results and interpretation](docs/result_interpretation.md)
+## Getting started
+* See the [Getting started](https://github.com/PacificBiosciences/HiFi-SVTopo/blob/main/docs/svtopo_usage.md#getting-started) section in the [user guide](docs/user_guide.md) to start using SVTopo.
 
 
 ## Support information
