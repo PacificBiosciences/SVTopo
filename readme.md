@@ -23,7 +23,7 @@ SVTopo is distributed as two interdependent tools, both necesary for the two-ste
 - SVTopoVz: a Python plotter for the JSON data. `svtopovz` is pronounced "es-vee-tope-oh-viz"
 
 ## Getting started
-* See the [Getting started](https://github.com/PacificBiosciences/HiFi-SVTopo/blob/main/docs/svtopo_usage.md#getting-started) section in the [User Guide](docs/user_guide.md) to start using SVTopo.
+* See the [Getting started](docs/user_guide.md#getting-started) section in the [User Guide](docs/user_guide.md) to start using SVTopo.
 
 
 ## Support information
