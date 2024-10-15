@@ -17,8 +17,6 @@ Key Features:
 * Chained plot highlighting deletion, duplication, and inversion effects on resulting rearranged genome structure
 ![](docs/imgs/complex_fully_connected.png)
 
-Components:
-
 SVTopo is distributed as two interdependent tools, both necesary for the two-step image generation process:
 - SVTopo: a Rust binary for fast BAM parsing into small JSON files. `svtopo` is pronounced "es-vee-tope-oh"
 - SVTopoVz: a Python plotter for the JSON data. `svtopovz` is pronounced "es-vee-tope-oh-viz"
