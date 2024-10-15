@@ -13,6 +13,7 @@ This image is a representation of a complex SV consisting of genomic blocks A-J,
 * B, D, F, and H are deleted
 
 The sizes of the blocks are annotated in the legend on the right. The order and orientation of the sample genome relative to the reference are shown by the chain plot at the bottom, where the order of A, E, C, G, and J is shown with arrows indicating inversion of E and G.
+Optional gene annotations appear at the bottom of the main plot window, indicating olfactory recepter gene overlaps.
 
 ## Gallery of examples
 **Simple double-deletions**
