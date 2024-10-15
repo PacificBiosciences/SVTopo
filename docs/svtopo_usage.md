@@ -46,14 +46,14 @@ svtopo\
 SVTopo was benchmarked with a 30x HiFi genome, with and without the recommended sawfish-based option:
 
 * Sawfish benchmark:
-      * Runtime 13mins:27secs
-      * 3.11 Gb RAM
-      * X total entries in JSON output
+      * Runtime 13mins:33secs
+      * 3.3 GB RAM
+      * 202 complex SV images
 * Non-sawfish benchmark:
-      * Runtime Xmins:Xsecs
-      * X Gb RAM
-      * X total entries in JSON output
-  
+      * Runtime 10mins:2secs
+      * 3.4 GB RAM
+      * 216 complex SV images
+
 ## Algorithm notes
 * Clipped alignments: SVTopo uses chimeric/split alignments to identify signals of structural variation. These are defined as alignments with at least 100 bases of soft-clipping on either end of the alignment. Alignments with MAPQ < 20 are omitted.
 * Finding break clusters with alignments: Locations of genomic breaks are identified using alignment clipping locations that are clustered together. These must be within a 10 bp confidence interval of each other, allowing for small differences of alignment and minimal sequencing error. Break cluster positions are given from the middle of the clip sites among alignments within 10 bp.
