@@ -2,6 +2,7 @@
 
 This project will be presented at the **American Society of Human Genetics 2024** conference in Denver, CO: **Poster 1180W**.
 
+<h1 align="center"><img width="300px" src="docs/imgs/svtopo.svg"/></h1>
 
 <h1 align="center">SVTopo</h1>
 
