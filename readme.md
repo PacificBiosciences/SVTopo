@@ -13,6 +13,7 @@ Key Features:
 * Block block of connected aligned sequences, showing order and orientation in the sample genome relative to the reference
   * Alignment support strength shown by block weight
   * Block sizes encoded into legend
+* Optional gene annotations (indicating olfactory gene overlaps)
 * Chained plot highlighting deletion, duplication, and inversion effects on resulting rearranged genome structure
 ![](docs/imgs/complex_fully_connected.png)
 
