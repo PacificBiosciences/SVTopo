@@ -1,6 +1,6 @@
 ## :loudspeaker: Project Announcement
 
-This project will be presented at the **American Society of Human Genetics 2024** conference in Denver, CO at **Poster 1180W**.
+This project will be presented at the **American Society of Human Genetics 2024** conference in Denver, CO: **Poster 1180W**.
 
 
 <h1 align="center">SVTopo</h1>
