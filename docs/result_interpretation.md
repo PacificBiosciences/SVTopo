@@ -15,10 +15,13 @@ This image is a representation of a complex SV consisting of genomic blocks A-J,
 The sizes of the blocks are annotated in the legend on the right. The order and orientation of the sample genome relative to the reference are shown by the chain plot at the bottom, where the order of A, E, C, G, and J is shown with arrows indicating inversion of E and G.
 
 ## Gallery of examples
-**Simple double-deletion**
+**Simple double-deletions**
+
+![adjacent_dels](imgs/simple_double_del.png)
+This example contains two deletions B and D, separated by a small (61 bp) conserved region C.
 
 ![two_dels_with](imgs/two_dels.png)
-This example contains two deletion events. Individually they are simple deletions, though their proximity is interesting with A->C->E remaining in the sample while B and D are lost. The extremely small size of region C alters the plotting location for the text label, moving it above the small C block. 
+This example contains two deletion events that are farther apart (~75 kbp) but phased to the same haplotype.
 
 **Inversion with flanking deletions**
 ![two_dels_with_inv](imgs/two_dels_with_inv.png)
@@ -32,6 +35,6 @@ In this example, after an initial A->B->C structure, there is a second copy of B
 ![del_inv_dup](imgs/del_inv_dup.png)
 Similarly this example contains a deletion and an inverted non-tandem duplication. The order is changed from the previous example as the first rearrangement is the deletion.
 
-**Complex rearrangement with six deletions**
-![phase_two_dels](imgs/six_dels.png)
-This example shows multiple deletions in a single region; all are directly linked by alignment support. All of the regions that are not missing from this sample remain in reference order and orientation, despite the loss of the six genonomic blocks between them (B, D, F, H, J, and L).
+**Balanced inverted translocation**
+![balanced-inv](imgs/translocation.png)
+This example shows an inverted translocationh of a 3 kbp sequence from chr12 to chr10. The double line in the `Reference path` chain plot shows the chromosomal transition.
