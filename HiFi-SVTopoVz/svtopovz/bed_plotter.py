@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import logging
 
+from svtopovz.utils import SMALL_FONTSIZE
+
 logger = logging.getLogger(__name__)
 
 
@@ -16,9 +18,10 @@ def annotate_bed_records(bed_records, region, ax):
     region_bed_records = get_region_bed_records(bed_records, region)
     annotation_top = 0.4
     annotation_bottom = 0.2
-    arrows_per_window = 50
-    title_char_per_window = 175
+    arrows_per_window = 100
     region_length = region.end - region.start
+    title_coords = []
+    strand_coords = []
     for bed_record in region_bed_records:
         annotation_len = bed_record.end - bed_record.start
         annotation_fract = annotation_len / region_length
@@ -30,6 +33,7 @@ def annotate_bed_records(bed_records, region, ax):
             annotation_fract,
             arrows_per_window,
             annotation_bottom,
+            strand_coords,
             ax,
         )
         add_title(
@@ -37,8 +41,7 @@ def annotate_bed_records(bed_records, region, ax):
             annotation_len,
             annotation_top,
             annotation_bottom,
-            annotation_fract,
-            title_char_per_window,
+            title_coords,
             ax,
         )
 
@@ -68,6 +71,7 @@ def add_strand(
     annotation_fract,
     arrows_per_window,
     annotation_bottom,
+    strand_coords,
     ax,
 ):
     """
@@ -85,12 +89,29 @@ def add_strand(
     for x_pos in np.arange(
         bed_record.start, bed_record.end, annotation_len / arrow_count
     ):
-        ax.text(
-            x_pos,
-            annotation_bottom,
-            strand_indicator[bed_record.strand],
-            fontsize=6,
-        )
+        overlaps_prev = False
+        for strand_coord in strand_coords:
+            if strand_coord[0] <= x_pos <= strand_coord[1]:
+                overlaps_prev = True
+        if not overlaps_prev:
+            text = ax.text(
+                x_pos,
+                annotation_bottom,
+                strand_indicator[bed_record.strand],
+                fontsize=6,
+            )
+            plt.draw()
+
+            # Get the bounding box of the text in display coordinates
+            renderer = ax.figure.canvas.get_renderer()
+            bbox = text.get_window_extent(renderer=renderer)
+
+            # Convert the display coordinates back to data coordinates
+            bbox_data = bbox.transformed(ax.transData.inverted())
+
+            # Extract the x coordinates of the bounding box
+            strand_coords.append((bbox_data.xmin, bbox_data.xmax))
+
 
 
 def add_title(
@@ -98,8 +119,7 @@ def add_title(
     annotation_len,
     annotation_top,
     annotation_bottom,
-    annotation_fract,
-    chars_per_window,
+    title_coords,
     ax,
 ):
     """
@@ -108,15 +128,30 @@ def add_title(
     """
     annotation_x_middle = bed_record.start + (annotation_len / 2)
     annotation_title_y = annotation_bottom - (annotation_top - annotation_bottom)
-    allowed_char_count = int(annotation_fract * chars_per_window)
-    title = bed_record.title[:allowed_char_count]
-    ax.text(
-        annotation_x_middle,
-        annotation_title_y,
-        title,
-        fontsize=4.5,
-        horizontalalignment="center",
-    )
+    overlaps_prev = False
+    for coord_pair in title_coords:
+        if coord_pair[0] <= annotation_x_middle <= coord_pair[1]:
+            overlaps_prev = True
+    
+    if not overlaps_prev:
+        text = ax.text(
+            annotation_x_middle,
+            annotation_title_y,
+            bed_record.title,
+            fontsize=SMALL_FONTSIZE,
+            horizontalalignment="center",
+        )
+        plt.draw()
+
+        # Get the bounding box of the text in display coordinates
+        renderer = ax.figure.canvas.get_renderer()
+        bbox = text.get_window_extent(renderer=renderer)
+
+        # Convert the display coordinates back to data coordinates
+        bbox_data = bbox.transformed(ax.transData.inverted())
+
+        # Extract the x coordinates of the bounding box
+        title_coords.append((bbox_data.xmin, bbox_data.xmax))
 
 
 def get_region_bed_records(bed_records, region):

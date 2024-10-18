@@ -120,9 +120,11 @@ def generate_sample_ordered_blocks(
         "orientation": "",
         "start_index": None,
         "end_index": None,
+        "chrom": None,
     }
     for sample_order_idx in region_info:
         block_info = []
+        block_found = False
         for block in region_info[sample_order_idx]:
             block_region = block["region"]
             block_start = (block_region["start_chrom"], block_region["start"])
@@ -139,6 +141,7 @@ def generate_sample_ordered_blocks(
             if block_end not in ref_blocks_by_end:
                 continue
             block_end_idx = ref_blocks[ref_blocks_by_end[block_end]]
+            block_found = True
 
             if len(block["coverages"]) > 0:
                 new_spanned_blocks = get_spanned_blocks(
@@ -150,10 +153,15 @@ def generate_sample_ordered_blocks(
                 prev_info["is_direct_unspanned"] = False
             else:
                 prev_info["is_direct_unspanned"] = True
-
-        prev_info["orientation"] = block["orientation"]
-        prev_info["end_index"] = block_end_idx
-        prev_info["start_index"] = block_start_idx
+        if block_found:
+            prev_info["orientation"] = block["orientation"]
+            prev_info["end_index"] = block_end_idx
+            prev_info["start_index"] = block_start_idx
+            prev_info["chrom"] = (
+                block_region["start_chrom"]
+                if block["orientation"] == "+"
+                else block_region["end_chrom"]
+            )
 
         if len(block_info) > 1:
             block_info = list(permutations(block_info))
@@ -194,7 +202,11 @@ def add_chain_ends(
     rearrangements.
     """
     for sample_path in sample_paths:
-        if len(sample_path[-1][0]) == 0:
+        if (
+            len(sample_path) == 0
+            or len(sample_path[0][0]) == 0
+            or len(sample_path[-1][0]) == 0
+        ):
             return
 
         # modify first block so that the chain starts at the beginning of the chromosome
@@ -239,7 +251,10 @@ def get_spanned_blocks(
     * `block_start_idx` and `block_end_idx` are the indices of the start and end of this block within the chain
     """
     spanned_blocks = []
-    if prev_info["is_direct_unspanned"]:
+    if (
+        prev_info["is_direct_unspanned"]
+        or prev_info["chrom"] != block["region"]["start_chrom"]
+    ):
         if block["orientation"] == "":
             # if the current orientation is not known, it can be propagated from the previous block
             block["orientation"] = prev_info["orientation"]
@@ -315,11 +330,11 @@ def plot_reference_blocks_proportionally(
                 "Ref",
                 fontsize=FONTSIZE,
             )
-        for i, block_idx in enumerate(ref_blocks):
-            if i in skipped_ref_blocks:
+        for j, block_idx in enumerate(ref_blocks):
+            if j in skipped_ref_blocks:
                 continue
-            letter_code = convert_to_letters(i, skipped_ref_blocks)
-            color = colors[i]
+            letter_code = convert_to_letters(j, skipped_ref_blocks)
+            color = colors[j]
             block = ref_blocks[block_idx]
             block_start = block[1]
             if left_end is None or block_start < left_end:
@@ -329,8 +344,8 @@ def plot_reference_blocks_proportionally(
             block_len = block_end - block_start
             if block_len < MIN_CLUSTER_PRECISION:
                 continue
-            starts_in_window = window.start < block_start < window.end
-            ends_in_window = window.start < block_end < window.end
+            starts_in_window = window.start <= block_start <= window.end
+            ends_in_window = window.start <= block_end <= window.end
             block_lens.append((letter_code, block_len, color))
             if block_chrom != window.chrom or not (starts_in_window or ends_in_window):
                 # if the block is outside this pane of the variant window, skip the lettering
@@ -424,7 +439,6 @@ def plot_reference_blocks_same_size(
     """
     plot genomic blocks in reference order
     """
-    _, plot_height = ax.get_ylim()
     block_len = min(region_size / len(ref_blocks), (region_size / (SMALL_BLOCK_SCALE)))
 
     left_end = 0
@@ -433,8 +447,7 @@ def plot_reference_blocks_same_size(
             continue
         letter_code = convert_to_letters(i, skipped_ref_blocks)
         color = colors[i]
-        chain_middle = plot_height - PATCH_HALFWIDTH
-        chain_middle = 3.5  # top of the chain plot axis
+        chain_middle = 3.75  # top of the chain plot axis
 
         if i > 0 and ref_blocks[i - 1][0] != ref_blocks[i][0]:
             # add chromosomal transition
@@ -520,109 +533,44 @@ def plot_sample_paths(
     """
     Plots genomic blocks in each possible sample order up to a maximum of three options
     """
-    success = False
+    successes = set()
     max_option_plot_len = 0
     finished_paths = []
-    block_len = min(region_size / len(ref_blocks), (region_size / (SMALL_BLOCK_SCALE)))
-    block_len = min(region_size / len(ref_blocks), (region_size / (SMALL_BLOCK_SCALE)))
-    for option_number, sample_path in enumerate(sample_paths):
+    for path_number, sample_path in enumerate(sample_paths):
         if sample_path in finished_paths:
             continue
+        if len(sample_paths) > 1:
+            chain_y_middle = len(sample_paths) - (path_number * 1.25)
+        else:
+            chain_y_middle = 1.5
 
         finished_paths.append(sample_path)
         option_plot_len = 0
         left_end = 0
-        right_end = 0
         for block_numbers, orientation in sample_path:
             for i, block_number in enumerate(block_numbers):
                 if block_number in skipped_ref_blocks:
                     continue
-
-                if (
-                    i > 0
-                    and block_numbers[i - 1] == (block_numbers[i] - 1)
-                    and ref_blocks[block_numbers[i - 1]][0]
-                    != ref_blocks[block_numbers[i]][0]
-                ):
-                    # add chromosomal transition
-                    ax.text(
-                        left_end,
-                        chain_y_middle - PATCH_HALFWIDTH,
-                        "//",
-                        fontsize=FONTSIZE + 4,
-                    )
-                    left_end += block_len / 2.5
-
-                letter_code = convert_to_letters(block_number, skipped_ref_blocks)
-                color = colors[block_number]
-                block_start = min(
-                    ref_blocks[block_number][1], ref_blocks[block_number][3]
+                option_plot_len, success, left_end = plot_block(
+                    ax,
+                    block_numbers,
+                    i,
+                    ref_blocks,
+                    skipped_ref_blocks,
+                    colors,
+                    chain_y_middle,
+                    region_size,
+                    orientation,
+                    option_plot_len,
+                    left_end,
                 )
-                block_end = max(
-                    ref_blocks[block_number][1], ref_blocks[block_number][3]
-                )
-                block_start = left_end
-                block_end = block_start + block_len
-                right_end += block_end
-                left_end = block_end
-                option_plot_len += block_len
-                chain_y_middle = len(sample_paths) - option_number + 0.5
-                arrowhead_len = region_size / ARROWHEAD_SIZE
-
-                if orientation == "-":
-                    arrowhead_len *= -1
-                    polygon_coords = get_polygon(
-                        block_len,
-                        block_end,
-                        block_start,
-                        region_size,
-                        chain_y_middle,
-                        orientation,
-                    )
-                else:
-                    polygon_coords = get_polygon(
-                        block_len,
-                        block_start,
-                        block_end,
-                        region_size,
-                        chain_y_middle,
-                        orientation,
-                    )
-                if block_len < MIN_CLUSTER_PRECISION:
-                    continue
-                success = True
-                if block_len >= (region_size / SMALL_BLOCK_SCALE):
-                    ax.text(
-                        block_start + ((block_len - arrowhead_len) / 2),
-                        chain_y_middle - (PATCH_HALFWIDTH / 4),
-                        letter_code,
-                        fontsize=FONTSIZE,
-                        horizontalalignment="center",
-                        verticalalignment="center",
-                    )
-                else:
-                    ax.text(
-                        block_start + block_len / 2,
-                        chain_y_middle + PATCH_HALFWIDTH,
-                        letter_code,
-                        fontsize=FONTSIZE,
-                        horizontalalignment="right",
-                        verticalalignment="bottom",
-                    )
-
-                block_shape = plt.Polygon(
-                    polygon_coords,
-                    fill=color,
-                    lw=0.5,
-                    color=color,
-                )
-                ax.add_patch(block_shape)
+                successes.add(success)
 
         label = "Sample path {}:"
         ax.text(
             0,
             chain_y_middle + (PATCH_HALFWIDTH * 2),
-            label.format(option_number),
+            label.format(path_number),
             fontsize=FONTSIZE,
         )
         if option_plot_len > max_option_plot_len:
@@ -630,11 +578,106 @@ def plot_sample_paths(
     if max_option_plot_len == 0:
         max_option_plot_len += 1
 
-    if success:
+    if True in successes:
         ax.set_ylim(0, 4)
         x_end = max(region_size, max_option_plot_len)
         ax.set_xlim(0, x_end)
     return success
+
+
+def plot_block(
+    ax,
+    block_numbers,
+    path_index,
+    ref_blocks,
+    skipped_ref_blocks,
+    colors,
+    chain_y_middle,
+    region_size,
+    orientation,
+    option_plot_len,
+    left_end,
+):
+    """
+    Plot a block in a sample path through the variant graph
+    """
+    block_len = min(region_size / len(ref_blocks), (region_size / (SMALL_BLOCK_SCALE)))
+    block_number = block_numbers[path_index]
+
+    if (
+        path_index > 0
+        and block_numbers[path_index - 1] == (block_numbers[path_index] - 1)
+        and ref_blocks[block_numbers[path_index - 1]][0]
+        != ref_blocks[block_numbers[path_index]][0]
+    ):
+        # add chromosomal transition
+        ax.text(
+            left_end,
+            chain_y_middle - PATCH_HALFWIDTH,
+            "//",
+            fontsize=FONTSIZE + 4,
+        )
+        left_end += block_len / 2.5
+
+    letter_code = convert_to_letters(block_number, skipped_ref_blocks)
+    color = colors[block_number]
+    block_start = min(ref_blocks[block_number][1], ref_blocks[block_number][3])
+    block_end = max(ref_blocks[block_number][1], ref_blocks[block_number][3])
+    block_start = left_end
+    block_end = block_start + block_len
+
+    left_end = block_end
+    option_plot_len += block_len
+    arrowhead_len = region_size / ARROWHEAD_SIZE
+
+    if orientation == "-":
+        arrowhead_len *= -1
+        polygon_coords = get_polygon(
+            block_len,
+            block_end,
+            block_start,
+            region_size,
+            chain_y_middle,
+            orientation,
+        )
+    else:
+        polygon_coords = get_polygon(
+            block_len,
+            block_start,
+            block_end,
+            region_size,
+            chain_y_middle,
+            orientation,
+        )
+    if block_len < MIN_CLUSTER_PRECISION:
+        return option_plot_len, False, left_end
+    if block_len >= (region_size / SMALL_BLOCK_SCALE):
+        ax.text(
+            block_start + ((block_len - arrowhead_len) / 2),
+            chain_y_middle - (PATCH_HALFWIDTH / 4),
+            letter_code,
+            fontsize=FONTSIZE,
+            horizontalalignment="center",
+            verticalalignment="center",
+        )
+    else:
+        ax.text(
+            block_start + block_len / 2,
+            chain_y_middle + PATCH_HALFWIDTH,
+            letter_code,
+            fontsize=FONTSIZE,
+            horizontalalignment="right",
+            verticalalignment="bottom",
+        )
+
+    block_shape = plt.Polygon(
+        polygon_coords,
+        fill=color,
+        lw=0.5,
+        color=color,
+    )
+    ax.add_patch(block_shape)
+    return option_plot_len, True, left_end
 
 
 def get_polygon(

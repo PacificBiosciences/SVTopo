@@ -116,6 +116,16 @@ def choose_window_coordinates(region_info, max_size):
     """
     if max_size == 0:
         max_size = BIG_NUMBER
+    positions = get_positions_in_window(region_info)
+    windows_by_chrom = get_windows_by_chromosome(positions, max_size)
+    windows = get_windows(windows_by_chrom, positions)
+    return windows
+
+
+def get_positions_in_window(region_info):
+    """
+    Given region info, extract all break positions from the event
+    """
     positions = {}
     for entry in region_info:
         start_chrom = entry["region"]["start_chrom"]
@@ -133,19 +143,26 @@ def choose_window_coordinates(region_info, max_size):
         else:
             positions[start_chrom].append(start)
             positions[end_chrom].append(end)
+    return positions
 
+
+def get_windows_by_chromosome(positions, max_size):
+    """
+    Given positions in the event,
+    return all positions indexed by their chromosome
+    """
     windows_by_chrom = {}
     for chrom in positions:
         if chrom not in windows_by_chrom:
             windows_by_chrom[chrom] = []
-        chrom_positions = sorted(positions[chrom])
+        chrom_positions = sorted(list(set(positions[chrom])))
         prev_start = 0
         prev_end = 0
         for pos in chrom_positions:
+            current_dist = pos - prev_end
             if prev_start == 0:
                 prev_start = pos
-            elif prev_end > prev_start and (pos - prev_end) > max_size:
-                current_dist = pos - prev_end
+            elif prev_end != 0 and current_dist > max_size:
                 padding = min(int(current_dist / 4), SPLIT_REGION_PADDING)
                 windows_by_chrom[chrom].append(
                     Region(
@@ -157,18 +174,17 @@ def choose_window_coordinates(region_info, max_size):
                 )
                 prev_start = pos - padding
             prev_end = pos
-        if len(windows_by_chrom[chrom]) > 0:
-            first_region = windows_by_chrom[chrom][-1]
-            windows_by_chrom[chrom][-1] = Region(
-                chrom,
-                first_region.start,
-                prev_end,
-                prev_end - first_region.start,
-            )
-        else:
-            windows_by_chrom[chrom].append(
-                Region(chrom, prev_start, prev_end, prev_end - prev_start)
-            )
+        windows_by_chrom[chrom].append(
+            Region(chrom, prev_start, prev_end, prev_end - prev_start)
+        )
+    return windows_by_chrom
+
+
+def get_windows(windows_by_chrom, positions):
+    """
+    Given a dict of windows by their chromosome and all positions in an event
+    return all windows split at chromosome and at the maximum window size.
+    """
     windows = []
     for chrom in windows_by_chrom:
         for entry in windows_by_chrom[chrom]:
@@ -176,7 +192,7 @@ def choose_window_coordinates(region_info, max_size):
     windows = sorted(windows, key=lambda w: [w.chrom, w.start, w.end])
     if len(windows) > 0:
         start_window = windows[0]
-        windows_by_chrom[0] = Region(
+        windows[0] = Region(
             start_window.chrom,
             start_window.start - SPLIT_REGION_PADDING,
             start_window.end,
@@ -193,7 +209,6 @@ def choose_window_coordinates(region_info, max_size):
         start = min(positions)
         end = max(positions)
         windows.append(Region(chrom, start, end, end - start))
-
     return windows
 
 
@@ -273,40 +288,62 @@ def create_complex_sv_image(event_info, bed_records, max_window_size):
     return figname_splits
 
 
+def is_filtered_out(count, event_info, args):
+    """
+    Compare the event info against filtering options and
+    definitions of filterable events to determine if
+    this event should be plotted.
+    """
+    orientations = [x["orientation"] for x in event_info]
+    entry_types = [len(x["coverages"]) > 0 for x in event_info]
+    chroms = set([x["region"]["start_chrom"] for x in event_info]).union(
+        set([x["region"]["end_chrom"] for x in event_info])
+    )
+    is_simple_del = (
+        orientations == ["+", "+", "+"]
+        and entry_types == [True, False, True]
+        and len(chroms) == 1
+    )
+
+    is_simple_dup = (
+        orientations == ["+", "-", "+"]
+        and entry_types == [True, False, True]
+        and len(chroms) == 1
+    )
+
+    if len(event_info) == 0:
+        logger.debug("Skipped event #{}: empty entry".format(count))
+        return True
+    elif len(event_info) == 1:
+        logger.debug("Skipped event #{}: single-ended BND".format(count))
+        return True
+    elif not args.include_simple_dels and is_simple_del:
+        logger.debug("Skipped event #{}: simple DEL".format(count))
+        return True
+    elif not args.include_simple_dups and is_simple_dup:
+        logger.debug("Skipped event #{}: simple DUP".format(count))
+        return True
+    return False
+
+
 def svtopovz(args):
     sv_info = unpack_json(args.json)
     bed_records = unpack_bed_records(args.bed)
     for count, event_info in enumerate(sv_info):
-        orientations = [x["orientation"] for x in event_info]
-        entry_types = [len(x["coverages"]) > 0 for x in event_info]
-        if len(event_info) == 0:
-            logger.debug("Skipped event #{}: empty entry".format(count))
-        elif len(event_info) == 1:
-            logger.debug("Skipped event #{}: single-ended BND".format(count))
-        elif (
-            args.ignore_simple_dels
-            and orientations == ["+", "+", "+"]
-            and entry_types == [True, False, True]
-        ):
-            logger.debug("Skipped event #{}: simple DEL".format(count))
-        elif (
-            args.ignore_simple_dups
-            and orientations == ["+", "-", "+"]
-            and entry_types == [True, False, True]
-        ):
-            logger.debug("Skipped event #{}: simple DUP".format(count))
-        else:
+        if not is_filtered_out(count, event_info, args):
             figname_splits = create_complex_sv_image(
                 event_info,
                 bed_records,
                 args.max_gap_size_mb * MEGABASE,
             )
-            figname = "{}-{}.{}".format(
-                args.out_prefix,
-                "-".join(figname_splits),
-                args.image_type,
-            )
+            if figname_splits:
+                figname = "{}-{}.{}".format(
+                    args.out_prefix,
+                    "-".join(figname_splits),
+                    args.image_type,
+                )
 
-            plt.savefig(figname, dpi=400)
+                plt.savefig(figname, dpi=400)
+                logger.debug("Saved image {}".format(figname))
             plt.close()
             logger.debug("Finished event #{}".format(count))

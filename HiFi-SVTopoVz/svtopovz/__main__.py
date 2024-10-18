@@ -36,20 +36,17 @@ def setup_args():
         version="%(prog)s " + str(__version__),
     )
     parser.add_argument(
-        "-j",
         "--json",
         help="path to json-formatted complex SV data, extracted from BAM file using SVTopo. GZIP allowed.",
         required=True,
         type=valid_file,
     )
     parser.add_argument(
-        "-p",
         "--out-prefix",
         help="prefix for output files. May include a directory path.",
         required=valid_prefix,
     )
     parser.add_argument(
-        "-b",
         "--bed",
         help="paths to genome annotations in BED file format",
         required=False,
@@ -63,24 +60,23 @@ def setup_args():
     )
     parser.add_argument(
         "--max-gap-size-mb",
-        help="maximum gap size to show in one panel, in megabases. Default is entire chromosome",
-        default=0,
+        help="maximum gap size to show in one panel, in megabases. Default is 0.5mB",
+        default=0.5,
         type=float,
     )
     parser.add_argument(
-        "--log-level",
-        help="set log level",
-        choices=["debug", "info"],
-        default="info",
-    )
-    parser.add_argument(
-        "--ignore-simple-dels",
-        help="identifies simple deletions (defined as having exactly two forward spanned blocks, one forward unspanned) and skips them",
+        "--verbose",
+        help="print verbose output for debugging purposes",
         action="store_true",
     )
     parser.add_argument(
-        "--ignore-simple-dups",
-        help="identifies simple duplications (defined as having exactly two forward spanned blocks, one reverse unspanned) and skips them",
+        "--include-simple-dels",
+        help="does not skip simple deletions (defined as having exactly two forward spanned blocks, one forward unspanned)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--include-simple-dups",
+        help="does not skip simple duplications (defined as having exactly two forward spanned blocks, one reverse unspanned)",
         action="store_true",
     )
     return parser
@@ -91,11 +87,14 @@ def main():
     parser = setup_args()
     args = parser.parse_args()
 
-    if args.log_level == "info":
-        logging.basicConfig(level=logging.INFO)
-    else:
+    if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
+    if sys.version_info < (3, 10):
+        logger.error("SVTopoVz requires at least Python 3.10")
+        sys.exit()
     prefix_path = args.out_prefix
     prefix_dir = path.dirname(prefix_path)
     if len(prefix_dir) > 0 and not path.isdir(prefix_dir):

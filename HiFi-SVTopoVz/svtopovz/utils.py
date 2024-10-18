@@ -20,9 +20,13 @@ IMAGE_WIDTH = 12
 CHAINS = "chains"  # key for axis lookup
 BREAKS = "breaks"  # key for axis lookup
 MEGABASE = 1_000_000
-SPLIT_REGION_PADDING = 10_000  # 30 kb padding for region splitting
+SPLIT_REGION_PADDING = 1_000  # padding for region splitting
 BIG_NUMBER = 1_000_000_000_000_000_000
 MAX_XTICK_COUNT = 8
+MAX_ALLOWED_COVERAGE = 15
+COVERAGE_COLOR = "black"
+UNIQUE_BOX_COLOR = "darkgrey"
+AMBIG_BOX_COLOR = "red"
 Region = namedtuple("Region", ["chrom", "start", "end", "size"])
 
 
@@ -53,7 +57,7 @@ def get_coordinates(region_window: str):
             start, end = window_components[1].split("-")
         else:
             start, end = window_components[1], window_components[1]
-        chrom = chrom.lower()
+        chrom = chrom.upper()
         start = int(start)
         end = int(end)
         if start < end:
@@ -72,7 +76,7 @@ def natural_sort_key(string_val):
         if text.isdigit():
             result.append(int(text))
         else:
-            result.append(text.lower())
+            result.append(text.upper())
     return result
 
 

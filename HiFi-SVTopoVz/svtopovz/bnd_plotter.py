@@ -2,12 +2,11 @@
 
 import sys
 import matplotlib.pyplot as plt
-from svtopovz import bed_plotter
-from svtopovz import chain_plotter
 from svtopovz.utils import *
 import numpy as np
 from copy import deepcopy
 import logging
+from svtopovz.utils import MAX_ALLOWED_COVERAGE
 
 plt.set_loglevel(level="warning")
 
@@ -31,7 +30,9 @@ def plot_spanned_block(
     """
     end_coords = []
     start_coords = []
-    sorted_coverages = sorted(list(coverages.keys()), key=natural_sort_key)
+    # if the coverage is high, scale it down for better plotting
+    scaled_coverages = scale_coverages(coverages)
+    sorted_coverages = sorted(list(scaled_coverages.keys()), key=natural_sort_key)
     if len(sorted_coverages) == 0:
         logger.warn(
             "Warning: no coverages found for plot index {}".format(plot_idx),
@@ -42,21 +43,51 @@ def plot_spanned_block(
     rectangle_start = begin_region_coordinates.start
     rectangle_end = get_coordinates(sorted_coverages[-1]).end
 
-    if begin_region_coordinates.chrom != window.chrom:
+    if begin_region_coordinates.chrom.upper() != window.chrom.upper():
         return start_coords, end_coords
     starts_in_window = window.start <= rectangle_start <= window.end
     ends_in_window = window.start <= rectangle_end <= window.end
     if not starts_in_window and ends_in_window:
         return start_coords, end_coords
 
-    # plot alignments coverage if this isn't the end
-    # each entry is the end of that coverage depth so plot previous coverage each time
+    plot_coverages(
+        ax,
+        scaled_coverages,
+        sorted_coverages,
+        matched_order_count,
+        window.chrom,
+        plot_idx,
+    )
+    plot_rectangle(
+        ax, window.size, matched_order_count, rectangle_start, rectangle_end, plot_idx
+    )
+
+    start_coords, end_coords = plot_arrowhead(
+        ax,
+        window.size,
+        matched_order_count,
+        rectangle_start,
+        rectangle_end,
+        orientation,
+        sample_idx,
+        plot_idx,
+    )
+
+    return start_coords, end_coords
+
+
+def plot_coverages(
+    ax, scaled_coverages, sorted_coverages, matched_order_count, window_chrom, plot_idx
+):
+    """
+    Plot alignments coverage if this isn't the end.
+    Each entry is the end of that coverage depth so plot previous coverage each time
+    """
     prev_alignment_start = None
-    prev_coverage = coverages[sorted_coverages[0]]
-    cov_color = "black"
+    prev_coverage = scaled_coverages[sorted_coverages[0]]
     for coverage_coord in sorted_coverages:
         curr_alignment = get_coordinates(coverage_coord)
-        if curr_alignment.chrom != window.chrom:
+        if curr_alignment.chrom.upper() != window_chrom.upper():
             continue
         if prev_alignment_start is not None:
             ax.hlines(
@@ -64,13 +95,19 @@ def plot_spanned_block(
                 xmin=prev_alignment_start,
                 xmax=curr_alignment.start,
                 linewidth=prev_coverage / matched_order_count,
-                color=cov_color,
+                color=COVERAGE_COLOR,
             )
-            prev_coverage = coverages[coverage_coord]
+            prev_coverage = scaled_coverages[coverage_coord]
         prev_alignment_start = curr_alignment.start
 
-    # plot rectangle around the block
-    arrow_len = window.size / ARROWHEAD_SIZE
+
+def plot_rectangle(
+    ax, window_size, matched_order_count, rectangle_start, rectangle_end, plot_idx
+):
+    """
+    Plot the rectangle around a spanned block
+    """
+    arrow_len = window_size / ARROWHEAD_SIZE
     rectangle_fill = False
     rectangle_color = "darkgrey"
     if matched_order_count > 1:
@@ -91,9 +128,26 @@ def plot_spanned_block(
     )
     ax.add_patch(rectangle)
 
+
+def plot_arrowhead(
+    ax,
+    window_size,
+    matched_order_count,
+    rectangle_start,
+    rectangle_end,
+    orientation,
+    sample_idx,
+    plot_idx,
+):
+    """
+    Plot the arrowhead that shows directionality of the block
+    """
     # default to forward annotation of ends
     end_coords = [rectangle_end, sample_idx]
     start_coords = [rectangle_start, sample_idx]
+    patch_halfwidth = 0.25 / matched_order_count  # based on the unit height of each row
+    arrow_len = window_size / ARROWHEAD_SIZE
+    rectangle_color = UNIQUE_BOX_COLOR if matched_order_count == 1 else AMBIG_BOX_COLOR
 
     # plot arrowhead for end of rectangle
     arrowhead = None
@@ -106,7 +160,7 @@ def plot_spanned_block(
                 [rectangle_end, plot_idx + patch_halfwidth],
             ],
             color=rectangle_color,
-            fill=rectangle_fill,
+            fill=False,
             lw=0.5,
         )
     elif orientation == "-":
@@ -118,16 +172,28 @@ def plot_spanned_block(
                 [rectangle_start, plot_idx + patch_halfwidth],
             ],
             color=rectangle_color,
-            fill=rectangle_fill,
+            fill=False,
             lw=0.5,
         )
-        end_coords = [rectangle_start, sample_idx]
         start_coords = [rectangle_end, sample_idx]
+        end_coords = [rectangle_start, sample_idx]
 
     if arrowhead is not None:
         ax.add_patch(arrowhead)
 
     return start_coords, end_coords
+
+
+def scale_coverages(coverages):
+    """
+    Scale high-coverages down if above the maximum
+    """
+    max_coverage = max(coverages.values())
+    coverage_scaling_factor = max_coverage / MAX_ALLOWED_COVERAGE
+    if max_coverage > MAX_ALLOWED_COVERAGE:
+        for coord in coverages:
+            coverages[coord] /= coverage_scaling_factor
+    return coverages
 
 
 def is_inverted(block):
@@ -155,6 +221,54 @@ def get_unspanned_connections(current_block, spanned_block_ends):
 
     This is done by finding the closest end position to the start of the current block
     and the closest start to the end of the current block
+    """
+    (
+        potential_previous_connections,
+        potential_next_connections,
+    ) = get_unspanned_connection_candidates(current_block, spanned_block_ends)
+    prev_connection, prev_sample_idx = refine_unspanned_connections(
+        potential_previous_connections, current_block["sample_order_index"]
+    )
+    next_connection, next_sample_idx = refine_unspanned_connections(
+        potential_next_connections, current_block["sample_order_index"]
+    )
+
+    if next_connection and prev_connection is None:
+        # if one of the connections was ambigous and the other was not, use
+        # the unambigious to attempt to recover the ambiguous one
+        # this can help if two blocks have the same start and different ends in a dup
+        new_potential_prev_connections = []
+        for potential_prev_connection, sample_idx in potential_previous_connections:
+            if potential_prev_connection["region"] != next_connection["region"]:
+                new_potential_prev_connections.append(
+                    (potential_prev_connection, sample_idx)
+                )
+        if len(new_potential_prev_connections) == 1:
+            prev_connection = new_potential_prev_connections[0]
+
+    elif prev_connection and next_connection is None:
+        # same as above but for next_connection recovery
+        new_potential_next_connections = []
+        for potential_next_connection, sample_idx in potential_next_connections:
+            if potential_next_connection["region"] != prev_connection["region"]:
+                new_potential_next_connections.append(
+                    (potential_next_connection, sample_idx)
+                )
+        if len(new_potential_next_connections) == 1:
+            next_connection, next_sample_idx = new_potential_next_connections[0]
+
+    result = {
+        "prev_block": prev_connection,
+        "next_block": next_connection,
+        "prev_sample_idx": prev_sample_idx,
+        "next_sample_idx": next_sample_idx,
+    }
+    return result
+
+
+def get_unspanned_connection_candidates(current_block, spanned_block_ends):
+    """
+    Find spanned block starts and ends near the target block start and end
     """
     potential_previous_connections = []
     potential_next_connections = []
@@ -189,79 +303,30 @@ def get_unspanned_connections(current_block, spanned_block_ends):
         if abs(curr_start - spanned_genomic_coord) < MIN_CLUSTER_PRECISION:
             potential_previous_connections.append((start_block, sample_idx))
 
-    prev_connection = None
-    next_connection = None
-    prev_sample_idx = None
-    next_sample_idx = None
+    return potential_previous_connections, potential_next_connections
+
+
+def refine_unspanned_connections(potential_connections, current_sample_index):
+    """
+    Given a set of connections that could match the start or end of
+    the current block, refine down to 0-1 that are closest in sample space.
+    """
+    selected_connection = None
+    selected_sample_idx = None
 
     min_order_dist = None
     for (
         potential_prev_connection,
         potential_prev_sample_idx,
-    ) in potential_previous_connections:
-        current_dist = abs(
-            current_block["sample_order_index"] - potential_prev_sample_idx
-        )
-        # skip if the sample order index is exactly identical
-        # this only applies to prev, next may be identical in some cases
-        if current_dist == 0:
-            continue
+    ) in potential_connections:
+        current_dist = abs(current_sample_index - potential_prev_sample_idx)
         if min_order_dist is None or current_dist < min_order_dist:
             min_order_dist = current_dist
-            prev_connection, prev_sample_idx = (
+            selected_connection, selected_sample_idx = (
                 potential_prev_connection,
                 potential_prev_sample_idx,
             )
-
-    # the prev and next connections that fit the requirements and are closest
-    # in sample space to the current block are chosen
-    min_order_dist = None
-    for (
-        potential_next_connection,
-        potential_next_sample_idx,
-    ) in potential_next_connections:
-        current_dist = abs(
-            current_block["sample_order_index"] - potential_next_sample_idx
-        )
-        if min_order_dist is None or current_dist < min_order_dist:
-            min_order_dist = current_dist
-            next_connection, next_sample_idx = (
-                potential_next_connection,
-                potential_next_sample_idx,
-            )
-
-    if next_connection and prev_connection is None:
-        # if one of the connections was ambigous and the other was not, use
-        # the unambigious to attempt to recover the ambiguous one
-        # this can help if two blocks have the same start and different ends in a dup
-        new_potential_prev_connections = []
-        for potential_prev_connection, sample_idx in potential_previous_connections:
-            if potential_prev_connection["region"] != next_connection["region"]:
-                new_potential_prev_connections.append(
-                    (potential_prev_connection, sample_idx)
-                )
-        if len(new_potential_prev_connections) == 1:
-            prev_connection = new_potential_prev_connections[0]
-
-    elif prev_connection and next_connection is None:
-        # same as above but for next_connection recovery
-        new_potential_next_connections = []
-        for potential_next_connection, sample_idx in potential_next_connections:
-            if potential_next_connection["region"] != prev_connection["region"]:
-                new_potential_next_connections.append(
-                    (potential_next_connection, sample_idx)
-                )
-        if len(new_potential_next_connections) == 1:
-            next_connection, next_sample_idx = new_potential_next_connections[0]
-
-    result = {
-        "prev_block": prev_connection,
-        "next_block": next_connection,
-        "prev_sample_idx": prev_sample_idx,
-        "next_sample_idx": next_sample_idx,
-    }
-
-    return result
+    return selected_connection, selected_sample_idx
 
 
 def plot_unspanned_block(
@@ -288,8 +353,9 @@ def plot_unspanned_block(
 
     if current_block["orientation"] == "-":
         arrow_end, arrow_start = arrow_start, arrow_end
-    logger.debug("Unspanned connection previous break: {}".format(prev_break))
-    logger.debug("Unspanned connection next break: {}".format(next_break))
+    logger.debug("Unspanned connection from: {}".format(current_block))
+    logger.debug("Previous break: {}".format(prev_break))
+    logger.debug("Next break: {}".format(next_break))
 
     # margin for the arrowhead if uniquely present
     if (
@@ -311,6 +377,8 @@ def plot_unspanned_block(
     next_plot_index = plot_idx - 1
     if prev_sample_idx == current_block["sample_order_index"]:
         plot_idx -= 0.5
+        prev_plot_index -= 0.5
+        next_plot_index += 0.5
     elif next_sample_idx == current_block["sample_order_index"]:
         next_plot_index += 1
         plot_idx += 0.5
@@ -504,11 +572,10 @@ def plot_breaks(
     if region_size < 1_000:
         rounding_factor = -2
 
+    stepsize = max(1, int(region_size / xtick_count))
     xtick_locations = [
         round(x, rounding_factor)
-        for x in range(
-            window.start + padding, window.end - padding, int(region_size / xtick_count)
-        )
+        for x in range(window.start + padding, window.end - padding, stepsize)
     ]
     xtick_labels = ["{:,}".format(int(l)) for l in xtick_locations]
     ax.set_xticks(xtick_locations, xtick_labels, rotation=30, fontsize=FONTSIZE)

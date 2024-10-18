@@ -15,6 +15,7 @@ setup(
     name="svtopovz",
     version=version,
     description="command line tool for generating visualizations of complex structural variation",
+    python_requires=">=3.10",
     author="Jonathan Belyeu",
     author_email="jbelyeu@pacificbiosciences.com",
     url="",
@@ -24,9 +25,7 @@ setup(
     install_requires=requires,
     license="BSD",
     zip_safe=False,
-    entry_points={
-        "console_scripts": ["svtopovz = svtopovz.__main__:main"]
-    },
+    entry_points={"console_scripts": ["svtopovz = svtopovz.__main__:main"]},
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
