@@ -72,7 +72,7 @@ The primary output of the SVTopo step is the JSON file detailing the complex SVs
 
 ### SVTopoVz step
 The SVTopoVz step generates images for each of the entries in the complex SV JSON file that:
-* are not simple deletions or tandem duplications
+* is not a simple deletion or tandem duplication
 * can be fully resolved by SVTopoVz into a complex SV graph
 
 For detailed notes on interpretation of these plots, see [result interpretation](https://github.com/PacificBiosciences/HiFi-SVTopo/blob/main/docs/result_interpretation.md).
@@ -101,12 +101,12 @@ __Non-sawfish benchmark:__
   
 ### Algorithm notes
 * Clipped alignments: SVTopo uses chimeric/split alignments to identify signals of structural variation. These are defined as alignments with at least 100 bases of soft-clipping on either end of the alignment. Alignments with MAPQ < 20 are omitted.
-* Finding break clusters with alignments: Locations of genomic breaks are identified using alignment clipping locations that are clustered together. These must be within a 10 bp confidence interval of each other, allowing for small differences of alignment and minimal sequencing error. Break cluster positions are given from the middle of the clip sites among alignments within 10 bp.
-* Finding break clusters with sawfish output: If a VCF and `supporting_reads.json` are provided from [sawfish](https://github.com/PacificBiosciences/sawfish), these are used to identify additional break locations (the VCF SV POS and END locations). In this case, the alignments from a read assigned to a given variant ID in the sawfish output are compared to the variant breakend locations and the clipping sites nearest the variant break locations are used to assign specific split alignments from the read to the coordinate of the breakend.
-* Phase filter: break clusters are only included if the phase is unambiguous. That is defined as having exactly one haplotype ID and one phaseset ID, with at least 2 phased alignments. Unphased alignments may also be included.
-* Break connections: Once breaks are identified, they can be connected in pairwise fashion by alignments that are shared between them, or by using VCF entry connections (via VCF record POS/END). Alignment-based connections must have a minimum of two such shared alignments and break connections must be within 1 mb of each other (if on the same chromosome).
-* Phased connection of clusters: In some cases phasing is used to connect break locations instead of directly using spanning alignments. In these cases, the clusters must be within 500kb of each other, have the same phaseset ID, and be on the same haplotype.
-* Ambiguous sample order: In some cases it may be impossible to determine the order of some genomic blocks. These are given the sample sample_order_index entry in JSON and plotted in images with red outlines.
+* Finding break clusters:
+    * With alignments: Locations of genomic breaks are identified using alignment clipping locations that are clustered together. These must be within a 10 bp confidence interval of each other (allowing for small differences of alignment). A minimum of two alignments is required to support a cluster as a potential valid break location.
+    * With sawfish output: If a VCF and `supporting_reads.json` are provided from [sawfish](https://github.com/PacificBiosciences/sawfish), these are used to identify additional break locations (by using the VCF SV POS and END locations. The specific alignment from a chimeric read is assigned to a coordinate break location by identifying the closest pair of read clipping coordinate and variant breakend coordinate.
+* Break connections: Once breaks are identified, they can be connected in pairwise fashion by alignments that are shared between them. They may also be connected by using VCF entry connections (via VCF record POS/END). Alignment-based connections must have a minimum of two such shared alignments and must be within 1 mb of each other (if on the same chromosome).
+    * Phased connection of clusters: If a breakend lacks direct connections to another breakend via alignments, SVTOpo searched for breakends up or down-stream for 500kb and connects them if the reads supporting both breaks have the same phaseset ID and are on the same haplotype.
+* Ambiguous sample order: In some cases it may be impossible to determine the order of some genomic blocks. These are given the sample sample_order_index entry in JSON and plotted in images with red outlines instead of the standard dark grey.
 * The following filters are applied:
   * Coverage of 300x or less (can be changed using the `max-coverage` option)
   * No more than 5% of reads below MAPQ of 5
