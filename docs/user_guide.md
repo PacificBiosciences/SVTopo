@@ -16,6 +16,7 @@ Processing steps:
 3. Connect pairs of coordinates that are joined by alignments
 4. Further connect these pairs to generate graphs of breakends that define structural rearrangements
 5. Emit graph representations as a JSON file
+6. Generate images from the JSON file with the SVTopoVz utility
 
 ## Getting started 
 
