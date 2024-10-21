@@ -20,10 +20,6 @@ Key Features (see [Result Interpretation](docs/result_interpretation.md) for mor
 Example SVTopo image from HG002 rearrangement
 ![](docs/imgs/complex_fully_connected.png)
 
-SVTopo is distributed as two interdependent tools, both necesary for the two-step image generation process:
-- SVTopo: a Rust binary for fast BAM parsing into small JSON files. `svtopo` is pronounced "es-vee-tope-oh"
-- SVTopoVz: a Python plotter for the JSON data. `svtopovz` is pronounced "es-vee-tope-oh-viz"
-
 ## Getting started
 * See the [Getting started](docs/user_guide.md#getting-started) section in the [User Guide](docs/user_guide.md) to start using SVTopo.
 
