@@ -11,7 +11,7 @@
 * [Complex SV example](#complex-sv)
 * [Double deletions](#double-deletions)
 * [Inversion with flanking deletions](#inversion-with-flanking-deletions)
-* [Inverted non-tandem duplication followed by deletion](inverted-non-tandem-duplication-followed-by-deletion)
+* [Inverted non-tandem duplication followed by deletion](#inverted-non-tandem-duplication-followed-by-deletion)
 * [Deletion followed by inverted non-tandem duplication and deletion](#deletion-followed-by-inverted-non-tandem-duplication-and-deletion)
 * [Balanced inverted translocation](#balanced-inverted-translocation)
 
