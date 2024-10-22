@@ -21,7 +21,8 @@ Example SVTopo image from HG002 rearrangement
 ![](docs/imgs/complex_fully_connected.png)
 
 ## Getting started
-* See the [Getting started](docs/user_guide.md#getting-started) section in the [User Guide](docs/user_guide.md) to start using SVTopo.
+* See the [Getting started](docs/user_guide.md#getting-started) section in the [User Guide](docs/user_guide.md) to start using SVTopo
+* See also [Result interpretation](docs/result_interpretation.md) for examples and explanation of SVTopo images
 
 
 ## Support information
