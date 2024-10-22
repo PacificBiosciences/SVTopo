@@ -8,7 +8,7 @@
 
 ## Overview
 
-SVTopo creates images to represent chimeric/split alignment evidence for structural variation, with an emphasis on complex variants. For the purposes of SVTopo, these are defined as SVs large enough to for the PBMM2 aligner to align reads in in multiple chimeric alignments. Novel insertions are not supported and by default simple deletions and duplications are omitted from results. Complex SVs in SVTopo therefore consist of inversions, translocations, and multi-breakend combinations of simple rearrangements.
+SVTopo creates images to represent chimeric/split alignment evidence for structural variation, with an emphasis on complex variants. For the purposes of SVTopo, these are defined as SVs large enough to for the [pbmm2](https://github.com/PacificBiosciences/pbmm2) aligner to align reads in in multiple chimeric alignments. Novel insertions are not supported and by default simple deletions and duplications are omitted from results. Complex SVs in SVTopo therefore consist of inversions, translocations, and multi-breakend combinations of simple rearrangements.
 
 Processing steps:
 1. Extract reads flagged with the BAM split alignment tag (`SA`)
@@ -55,14 +55,14 @@ The following example shows how this is done for a sample BAM called `HG002_hg38
 
 ```bash
 svtopo\
-    --bam HG002_hg38.bam\
-    --json-out svtopo_hg002_output.json.gz\
-    --variant-readnames sawfish_HG002_supporting_reads.json\
+    --bam HG002_hg38.bam \
+    --json-out svtopo_hg002_output.json.gz \
+    --variant-readnames sawfish_HG002_supporting_reads.json \
     --vcf HG002_sawfish.vcf.gz \
     --exclude-regions https://github.com/PacificBiosciences/HiFiCNV/raw/refs/heads/main/data/excluded_regions/cnv.excluded_regions.hg38.bed.gz
 mkdir images/
 svtopovz \
-  --json svtopo_hg002_output.json.gz\
+  --json svtopo_hg002_output.json.gz \
   --out-prefix images/hg002_svtopo
 ```
 This case (HG002 30X) generated 202 complex SV images, increasing to 626 when the `--include-simple-dels` and `--include-simple-dups` options were added to the SVTopoVz step.
