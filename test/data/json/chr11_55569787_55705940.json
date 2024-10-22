@@ -1,0 +1,159 @@
+[
+  [
+    {
+      "region": {
+        "start_chrom": "chr11",
+        "start": 55569787,
+        "end_chrom": "chr11",
+        "end": 55597046
+      },
+      "coverages": {
+        "chr11:55569787": 1,
+        "chr11:55581783": 2,
+        "chr11:55583807": 3,
+        "chr11:55584930": 4,
+        "chr11:55585844": 5,
+        "chr11:55586256": 6,
+        "chr11:55587895": 7,
+        "chr11:55589855": 8,
+        "chr11:55592994": 9,
+        "chr11:55594831": 10,
+        "chr11:55594907": 11,
+        "chr11:55596460": 12,
+        "chr11:55596582": 13,
+        "chr11:55597041": 9,
+        "chr11:55597046": 0
+      },
+      "sample_order_index": 0,
+      "orientation": "+"
+    },
+    {
+      "region": {
+        "start_chrom": "chr11",
+        "start": 55597041,
+        "end_chrom": "chr11",
+        "end": 55667022
+      },
+      "coverages": {},
+      "sample_order_index": 1,
+      "orientation": "+"
+    },
+    {
+      "region": {
+        "start_chrom": "chr11",
+        "start": 55664074,
+        "end_chrom": "chr11",
+        "end": 55667022
+      },
+      "coverages": {
+        "chr11:55664074": 13,
+        "chr11:55666412": 14,
+        "chr11:55667017": 5,
+        "chr11:55667022": 0
+      },
+      "sample_order_index": 2,
+      "orientation": "-"
+    },
+    {
+      "region": {
+        "start_chrom": "chr11",
+        "start": 55597412,
+        "end_chrom": "chr11",
+        "end": 55664074
+      },
+      "coverages": {},
+      "sample_order_index": 3,
+      "orientation": "-"
+    },
+    {
+      "region": {
+        "start_chrom": "chr11",
+        "start": 55597412,
+        "end_chrom": "chr11",
+        "end": 55597952
+      },
+      "coverages": {
+        "chr11:55597412": 13,
+        "chr11:55597609": 14,
+        "chr11:55597633": 15,
+        "chr11:55597784": 14,
+        "chr11:55597929": 13,
+        "chr11:55597948": 2,
+        "chr11:55597952": 0
+      },
+      "sample_order_index": 4,
+      "orientation": "+"
+    },
+    {
+      "region": {
+        "start_chrom": "chr11",
+        "start": 55597948,
+        "end_chrom": "chr11",
+        "end": 55678392
+      },
+      "coverages": {},
+      "sample_order_index": 5,
+      "orientation": "+"
+    },
+    {
+      "region": {
+        "start_chrom": "chr11",
+        "start": 55676539,
+        "end_chrom": "chr11",
+        "end": 55678392
+      },
+      "coverages": {
+        "chr11:55676539": 2,
+        "chr11:55676544": 13,
+        "chr11:55676649": 14,
+        "chr11:55676731": 13,
+        "chr11:55677989": 14,
+        "chr11:55678039": 13,
+        "chr11:55678087": 14,
+        "chr11:55678222": 13,
+        "chr11:55678388": 11,
+        "chr11:55678392": 0
+      },
+      "sample_order_index": 6,
+      "orientation": "-"
+    },
+    {
+      "region": {
+        "start_chrom": "chr11",
+        "start": 55676539,
+        "end_chrom": "chr11",
+        "end": 55690284
+      },
+      "coverages": {},
+      "sample_order_index": 7,
+      "orientation": "+"
+    },
+    {
+      "region": {
+        "start_chrom": "chr11",
+        "start": 55690279,
+        "end_chrom": "chr11",
+        "end": 55705940
+      },
+      "coverages": {
+        "chr11:55690279": 11,
+        "chr11:55690284": 13,
+        "chr11:55691083": 12,
+        "chr11:55691479": 11,
+        "chr11:55692449": 10,
+        "chr11:55695118": 9,
+        "chr11:55697892": 8,
+        "chr11:55699451": 7,
+        "chr11:55699564": 6,
+        "chr11:55699881": 5,
+        "chr11:55700541": 4,
+        "chr11:55700956": 3,
+        "chr11:55702428": 2,
+        "chr11:55705157": 1,
+        "chr11:55705940": 0
+      },
+      "sample_order_index": 8,
+      "orientation": "+"
+    }
+  ]
+]

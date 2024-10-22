@@ -1,0 +1,71 @@
+[
+  [
+    {
+      "region": {
+        "start_chrom": "chr3",
+        "start": 6596607,
+        "end_chrom": "chr3",
+        "end": 6608473
+      },
+      "coverages": {
+        "chr3:6596607": 1,
+        "chr3:6597532": 2,
+        "chr3:6607740": 3,
+        "chr3:6608473": 0
+      },
+      "sample_order_index": 0,
+      "orientation": "+"
+    },
+    {
+      "region": {
+        "start_chrom": "chr3",
+        "start": 6604603,
+        "end_chrom": "chr3",
+        "end": 6608473
+      },
+      "coverages": {},
+      "sample_order_index": 1,
+      "orientation": "-"
+    },
+    {
+      "region": {
+        "start_chrom": "chr3",
+        "start": 6604526,
+        "end_chrom": "chr3",
+        "end": 6604603
+      },
+      "coverages": {
+        "chr3:6604526": 2,
+        "chr3:6604603": 0
+      },
+      "sample_order_index": 2,
+      "orientation": "-"
+    },
+    {
+      "region": {
+        "start_chrom": "chr3",
+        "start": 6604526,
+        "end_chrom": "chr3",
+        "end": 6612956
+      },
+      "coverages": {},
+      "sample_order_index": 3,
+      "orientation": "+"
+    },
+    {
+      "region": {
+        "start_chrom": "chr3",
+        "start": 6612956,
+        "end_chrom": "chr3",
+        "end": 6614883
+      },
+      "coverages": {
+        "chr3:6612956": 2,
+        "chr3:6613990": 1,
+        "chr3:6614883": 0
+      },
+      "sample_order_index": 4,
+      "orientation": "+"
+    }
+  ]
+]

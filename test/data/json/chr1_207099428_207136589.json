@@ -1,0 +1,100 @@
+[
+  [
+    {
+      "region": {
+        "start_chrom": "chr1",
+        "start": 207100428,
+        "end_chrom": "chr1",
+        "end": 207119017
+      },
+      "coverages": {
+        "chr1:207100428": 1,
+        "chr1:207106104": 2,
+        "chr1:207106867": 3,
+        "chr1:207109391": 4,
+        "chr1:207110076": 5,
+        "chr1:207110427": 6,
+        "chr1:207112583": 7,
+        "chr1:207113260": 8,
+        "chr1:207114725": 9,
+        "chr1:207115463": 10,
+        "chr1:207115646": 11,
+        "chr1:207115959": 12,
+        "chr1:207116042": 13,
+        "chr1:207116071": 14,
+        "chr1:207116673": 15,
+        "chr1:207117363": 16,
+        "chr1:207118877": 17,
+        "chr1:207119017": 0
+      },
+      "sample_order_index": 0,
+      "orientation": "+"
+    },
+    {
+      "region": {
+        "start_chrom": "chr1",
+        "start": 207119017,
+        "end_chrom": "chr1",
+        "end": 207119084
+      },
+      "coverages": {},
+      "sample_order_index": 1,
+      "orientation": "+"
+    },
+    {
+      "region": {
+        "start_chrom": "chr1",
+        "start": 207119017,
+        "end_chrom": "chr1",
+        "end": 207119084
+      },
+      "coverages": {
+        "chr1:207119017": 16,
+        "chr1:207119084": 0
+      },
+      "sample_order_index": 2,
+      "orientation": "-"
+    },
+    {
+      "region": {
+        "start_chrom": "chr1",
+        "start": 207119017,
+        "end_chrom": "chr1",
+        "end": 207119850
+      },
+      "coverages": {},
+      "sample_order_index": 3,
+      "orientation": "+"
+    },
+    {
+      "region": {
+        "start_chrom": "chr1",
+        "start": 207119850,
+        "end_chrom": "chr1",
+        "end": 207135589
+      },
+      "coverages": {
+        "chr1:207119850": 17,
+        "chr1:207121709": 16,
+        "chr1:207122319": 15,
+        "chr1:207122353": 14,
+        "chr1:207122611": 13,
+        "chr1:207125799": 12,
+        "chr1:207125804": 11,
+        "chr1:207126362": 10,
+        "chr1:207126859": 9,
+        "chr1:207129016": 8,
+        "chr1:207130647": 7,
+        "chr1:207131519": 6,
+        "chr1:207132077": 5,
+        "chr1:207132408": 4,
+        "chr1:207133600": 3,
+        "chr1:207134690": 2,
+        "chr1:207134850": 1,
+        "chr1:207135589": 0
+      },
+      "sample_order_index": 4,
+      "orientation": "+"
+    }
+  ]
+]

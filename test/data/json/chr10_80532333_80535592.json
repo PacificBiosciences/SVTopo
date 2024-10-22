@@ -1,0 +1,75 @@
+[
+  [
+    {
+      "region": {
+        "start_chrom": "chr16",
+        "start": 75460403,
+        "end_chrom": "chr16",
+        "end": 75469436
+      },
+      "coverages": {
+        "chr16:75460403": 1,
+        "chr16:75469436": 0
+      },
+      "sample_order_index": 0,
+      "orientation": "+"
+    },
+    {
+      "region": {
+        "start_chrom": "chr10",
+        "start": 80535592,
+        "end_chrom": "chr16",
+        "end": 75469417
+      },
+      "coverages": {},
+      "sample_order_index": 1,
+      "orientation": "-"
+    },
+    {
+      "region": {
+        "start_chrom": "chr10",
+        "start": 80533333,
+        "end_chrom": "chr10",
+        "end": 80535592
+      },
+      "coverages": {
+        "chr10:80533333": 5,
+        "chr10:80533686": 6,
+        "chr10:80534672": 7,
+        "chr10:80535168": 8,
+        "chr10:80535187": 7,
+        "chr10:80535592": 0
+      },
+      "sample_order_index": 2,
+      "orientation": "-"
+    },
+    {
+      "region": {
+        "start_chrom": "chr10",
+        "start": 80533333,
+        "end_chrom": "chr16",
+        "end": 75469436
+      },
+      "coverages": {},
+      "sample_order_index": 3,
+      "orientation": "+"
+    },
+    {
+      "region": {
+        "start_chrom": "chr16",
+        "start": 75454938,
+        "end_chrom": "chr16",
+        "end": 75469436
+      },
+      "coverages": {
+        "chr16:75454938": 1,
+        "chr16:75456471": 2,
+        "chr16:75460403": 3,
+        "chr16:75462201": 4,
+        "chr16:75469436": 0
+      },
+      "sample_order_index": 4,
+      "orientation": "+"
+    }
+  ]
+]
