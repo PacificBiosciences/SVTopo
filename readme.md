@@ -10,20 +10,19 @@ This project will be presented at the **American Society of Human Genetics 2024*
 
 SVTopo represents complex structural variants (SVs) to enhance PacBio HiFi data. SVTopo determines connections between SV breakends using aligned reads and, optionally, variant calling output from the [sawfish](https://github.com/PacificBiosciences/sawfish) variant caller. SVTopo outputs connected breakends as JSON data and uses the SVTopoVz python utility to plot complex structural rearrangements as high-quality images.
 
-Key Features:
-* Block block of connected aligned sequences, showing order and orientation in the sample genome relative to the reference
+Key Features (see [Result Interpretation](docs/result_interpretation.md) for more details):
+* Top section: illustration of connected aligned sequences as blocks, showing order and orientation in the sample genome relative to the reference
   * Alignment support strength shown by block weight
   * Block sizes encoded into legend
-* Optional gene annotations (indicating olfactory gene overlaps)
-* Chained plot highlighting deletion, duplication, and inversion effects on resulting rearranged genome structure
+* Optional gene annotations
+* Bottom section: chained plot highlighting deletion, duplication, and inversion effects on rearranged genome structure
+
+Example SVTopo image from HG002 rearrangement
 ![](docs/imgs/complex_fully_connected.png)
 
-SVTopo is distributed as two interdependent tools, both necesary for the two-step image generation process:
-- SVTopo: a Rust binary for fast BAM parsing into small JSON files. `svtopo` is pronounced "es-vee-tope-oh"
-- SVTopoVz: a Python plotter for the JSON data. `svtopovz` is pronounced "es-vee-tope-oh-viz"
-
 ## Getting started
-* See the [Getting started](docs/user_guide.md#getting-started) section in the [User Guide](docs/user_guide.md) to start using SVTopo.
+* See the [Getting started](docs/user_guide.md#getting-started) section in the [User Guide](docs/user_guide.md) to start using SVTopo
+* See also [Result interpretation](docs/result_interpretation.md) for examples and explanation of SVTopo images
 
 
 ## Support information
