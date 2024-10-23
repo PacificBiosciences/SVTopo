@@ -35,10 +35,20 @@ Install from source, then test that the installation succeeded:
 ```bash
 git clone https://github.com/PacificBiosciences/HiFi-SVTopo.git
 cd HiFi-SVTopo/HiFi-SVTopoVz/
+conda create -n svtopo "python=3.10"
+conda activate svtopo
 python setup.py install
 svtopovz -h
 ```
 If successfully installed, this will print out the tool version and command-line options.
+
+### Run tests
+For a more complete test of your installation, run the test cases included in the [test/](https://github.com/PacificBiosciences/HiFi-SVTopo/tree/main/test) directory.
+The test script requires the absolute path to your downloaded `svtopo` binary. The following example assumes the binary is located in the `$HOME/bin/` directory:
+```bash
+cd HiFi-SVTopo/
+bash test/scripts/run_end_to_end_tests.sh $HOME/bin/svtopo_x86_64
+```
 
 #### Install from Conda
 _Coming soon_
