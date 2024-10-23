@@ -64,12 +64,13 @@ To plot complex SVs, run SVTopo on the mapped and phased sample BAM, and then ru
 The following example shows how this is done for a sample BAM called `HG002_hg38.bam` with sawfish VCF and `supporting_reads.json` inputs. The sawfish inputs may be omitted, but their inclusion improves results.
 
 ```bash
+wget https://github.com/PacificBiosciences/HiFiCNV/raw/refs/heads/main/data/excluded_regions/cnv.excluded_regions.hg38.bed.gz
 svtopo\
     --bam HG002_hg38.bam \
     --json-out svtopo_hg002_output.json.gz \
     --variant-readnames sawfish_HG002_supporting_reads.json \
     --vcf HG002_sawfish.vcf.gz \
-    --exclude-regions https://github.com/PacificBiosciences/HiFiCNV/raw/refs/heads/main/data/excluded_regions/cnv.excluded_regions.hg38.bed.gz
+    --exclude-regions cnv.excluded_regions.hg38.bed.gz
 mkdir images/
 svtopovz \
   --json svtopo_hg002_output.json.gz \
