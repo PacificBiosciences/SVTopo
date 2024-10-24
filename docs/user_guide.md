@@ -22,11 +22,22 @@ Processing steps:
 
 ### Installation
 
+#### Install from Conda
+_Coming soon_
+
 #### Install from GitHub
+##### SVTopo installation
 The `svtopo` Rust utility is available from the [Releases](https://github.com/PacificBiosciences/HiFi-SVTopo/releases) page.
 
-It can be downloaded and run directly on Linux systems.
+It can be downloaded, extracted, and run directly on Linux systems. For example with version 0.1.1:
+```bash
+wget https://github.com/PacificBiosciences/HiFi-SVTopo/releases/download/v0.1.1/svvtopo_v0.1.1-x86_64-unknown-linux-gnu.tar.gz
+tar -zxvf svvtopo_v0.1.1-x86_64-unknown-linux-gnu.tar.gz
+svtopo --version
+```
+This should will the `svtopo` binary to the local directory and print out the version number.
 
+##### SVTopoVz installation
 The `svtopovz` utility can be downloaded by cloning this reposity with git or by downloading a Source code asset from the [Releases](https://github.com/PacificBiosciences/HiFi-SVTopo/releases) page.
 
 It can then be installed from source as shown below. It is recommended that this tool be installed in a fresh [Conda](https://conda.io/projects/conda/en/latest/index.html) environment with Python=3.10. 
@@ -49,9 +60,6 @@ The test script requires the absolute path to your downloaded `svtopo` binary. T
 cd HiFi-SVTopo/
 bash test/scripts/run_end_to_end_tests.sh $HOME/bin/svtopo_x86_64
 ```
-
-#### Install from Conda
-_Coming soon_
 
 ### Analysis Steps
 SVTopo finds and plots SV images in two steps:
