@@ -23,7 +23,22 @@ Processing steps:
 ### Installation
 
 #### Install from Conda
-_Coming soon_
+SVTopo and the plotting utility SVTopoVz are both available from [Bioconda](https://bioconda.github.io/) on Linux. Assuming you have already installed [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html) and [mamba](https://mamba.readthedocs.io/en/latest/), the following example code creates a new environment with python v3.10, activates that environment, and installs both svtopo and svtopovz (as a dependency) into that environment. Note that these mamba commands work the same with conda, but mamba is recommended due to improved execution speed.
+
+```bash
+conda config --add channels bioconda
+mamba create -n svtopo "python=3.10"
+mamba activate svtopo
+mamba install -y svtopo
+```
+
+SVTopoVz can also be installed directly on MacOs via conda:
+```bash
+conda config --add channels bioconda
+mamba create -n svtopo "python=3.10"
+mamba activate svtopo
+mamba install -y svtopovz
+```
 
 #### Install from GitHub
 ##### SVTopo installation
