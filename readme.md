@@ -1,3 +1,4 @@
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/svtopo/README.html)
 ## :loudspeaker: Project Announcement
 
 This project will be presented at the **American Society of Human Genetics 2024** conference in Denver, CO: **Poster 1180W**.
