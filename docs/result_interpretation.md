@@ -59,4 +59,4 @@ Similarly this example contains a deletion and an inverted non-tandem duplicatio
 
 ### Balanced inverted translocation
 ![balanced-inv](imgs/translocation.png)
-This example shows an inverted translocationh of a 3 kbp sequence from chr12 to chr10. The double line in the `Reference path` chain plot shows the chromosomal transition.
+This example shows an inverted translocation of a 3 kbp sequence from chr12 to chr10. The double line in the `Reference path` chain plot shows the chromosomal transition.
