@@ -176,6 +176,7 @@ def generate_sample_ordered_blocks(
     extended_sample_paths = add_chain_ends(
         sample_paths, max_block_index, {v: k for k, v in ref_blocks.items()}
     )
+    extended_sample_paths = flip_inverted_blocks(extended_sample_paths)
     return extended_sample_paths
 
 
@@ -235,6 +236,21 @@ def add_chain_ends(
             "+",
         )
         sample_path[-1] = new_last_block
+    return sample_paths
+
+def flip_inverted_blocks(sample_paths):
+    """
+    Flips the ordering of sample indices for
+    sample blocks that have a reverse orientation.
+    """
+    for i in range(len(sample_paths)):
+        for j in range(len(sample_paths[i])):
+            block_indices = sample_paths[i][j][0]
+            block_orientation = sample_paths[i][j][1]
+            if block_orientation == '-':
+                block_indices = block_indices[::-1]
+                block_info = [block_indices, block_orientation]
+                sample_paths[i][j] = block_info
     return sample_paths
 
 
