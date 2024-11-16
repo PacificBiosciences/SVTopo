@@ -11,6 +11,12 @@ then
     exit 1
 fi
 
+if [ ! -e "$svtopo" ];
+then
+    echo "Invalid path $svtopo"
+    exit 1
+fi
+
 vcf=test/data/vcf/sawfish.vcf.gz
 reads_json=test/data/json/supporting_reads.json.gz
 wget https://github.com/PacificBiosciences/HiFiCNV/raw/refs/heads/main/data/excluded_regions/cnv.excluded_regions.hg38.bed.gz -O cnv.excluded_regions.hg38.bed.gz
