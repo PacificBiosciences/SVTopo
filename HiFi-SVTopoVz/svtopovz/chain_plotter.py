@@ -243,6 +243,8 @@ def flip_inverted_blocks(sample_paths):
     Flips the ordering of sample indices for
     sample blocks that have a reverse orientation.
     """
+    if sample_paths is None:
+        return sample_paths
     for i in range(len(sample_paths)):
         for j in range(len(sample_paths[i])):
             block_indices = sample_paths[i][j][0]
