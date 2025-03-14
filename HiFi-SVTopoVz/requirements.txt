@@ -1,4 +1,0 @@
-matplotlib>=3.8.4
-numpy==1.26.4
-scikit-image>=0.24.0
-cython>=3.0.10
