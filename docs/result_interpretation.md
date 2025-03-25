@@ -9,11 +9,16 @@
 
 ## Gallery of examples
 * [Complex SV example](#complex-sv)
-* [Double deletions](#double-deletions)
-* [Inversion with flanking deletions](#inversion-with-flanking-deletions)
-* [Inverted non-tandem duplication followed by deletion](#inverted-non-tandem-duplication-followed-by-deletion)
-* [Deletion followed by inverted non-tandem duplication and deletion](#deletion-followed-by-inverted-non-tandem-duplication-and-deletion)
-* [Balanced inverted translocation](#balanced-inverted-translocation)
+* [Deletion-deletion](#deletion-deletion)
+* [Deletion-inversion-deletion](#deletion-inversion-deletion)
+* [Deletion-nontandem-duplication](#deletion-nontandem-duplication)
+* [Nontandem-duplication-deletion](#nontandem-duplication-deletion)
+* [Nontandem-inv-deletion](#nontandem-inv-deletion)
+* [Phased-nontandem-inv](#phased-nontandem-inv)
+* [Nontandem-inv](#nontandem-inv)
+* [Balanced-translocation](#balanced-translocation)
+* [Inversion with problematic breakpoint definitions](#inversion-with-problematic-breakpoint-definitions)
+* [Incompletely resolved multi-region event](#incompletely-resolved-multi-region-event)
 
 ### Complex SV:
 ![system of deletions and inversions_example](imgs/complex_fully_connected.png)
@@ -26,58 +31,100 @@ The sizes of the blocks are annotated in the legend on the right. The order and 
 Optional gene annotations appear at the bottom of the main plot window, indicating olfactory recepter gene overlaps.
 
 IGV of the same region for comparison, with supplementary alignments linked:
-![igv_comparison](imgs/igv/igv_complex_sv.png)
+![igv_comparison](imgs/igv/complex_sv.png)
 
-<br><br>
+<br>
 
-### Double-deletions
+### Deletion-deletion
 
-![adjacent_dels](imgs/simple_double_del.png)
-This example contains two deletions B and D, separated by a small (61 bp) conserved region C.
-
-IGV of the same region for comparison, with supplementary alignments linked:
-![igv_comparison](imgs/igv/igv_double_deletion_1.png)
-
-<br><br>
-
-![two_dels_with](imgs/two_dels.png)
-This example contains two deletion events that are farther apart (~75 kbp) but phased to the same haplotype.
+![adjacent_dels](imgs/del-del.png)
+This example contains two deletions B and D, separated by a small (80 bp) conserved region C.
 
 IGV of the same region for comparison, with supplementary alignments linked:
-![igv_comparison](imgs/igv/igv_double_deletion_2.png)
+![igv_comparison](imgs/igv/del-del.png)
 
 <br><br>
 
-### Inversion with flanking deletions
-![two_dels_with_inv](imgs/two_dels_with_inv.png)
+
+### Deletion-inversion-deletion
+![two_dels_with_inv](imgs/del-inv-del.png)
 This example also contains two deletion events, but in this case the non-deleted region between them is also inverted (identifiable from the dashed lines). The inversion is also visible in the `Sample structure` chain plot at the bottom.
 
 IGV of the same region for comparison, with supplementary alignments linked:
-![igv_comparison](imgs/igv/igv_inversion_with_flanking_deletions.png)
+![igv_comparison](imgs/igv/del-inv-del.png)
 
 <br><br>
 
-### Inverted non-tandem duplication followed by deletion
-![inv_dup_and_del](imgs/inverted_dup_and_del.png)
+### Deletion-nontandem-duplication
+![del-nontandem-dup](imgs/del-nontandem-dup.png)
 In this example, after an initial A->B->C structure, there is a second copy of B in inverted orientation. The second copy is immediately followed by region E, which means the region D between them is omitted. This example thus contains an inverted non-tandem duplication and a deletion.
 
 IGV of the same region for comparison, with supplementary alignments linked:
-![igv_comparison](imgs/igv/igv_nontandem_duplication_followed_by_deletion.png)
+![igv_comparison](imgs/igv/del-nontandem-dup.png)
 
 <br><br>
 
-### Deletion followed by inverted non-tandem duplication and deletion
-![del_inv_dup](imgs/del_inv_dup.png)
-Similarly this example contains a deletion and an inverted non-tandem duplication. The order is changed from the previous example as the first rearrangement is the deletion.
+
+### Nontandem-duplication-deletion
+![nontandem-dup_del](imgs/nontandem-dup-del.png)
+This example contains a non-tandem duplication and a deletion.
 
 IGV of the same region for comparison, with supplementary alignments linked:
-![igv_comparison](imgs/igv/igv_deletion_followed_by_inverted_non_tandem_duplication_and_deletion.png)
+![igv_comparison](imgs/igv/nontandem-dup-del.png)
 
 <br><br>
 
-### Balanced inverted translocation
-![balanced-inv](imgs/translocation.png)
-This example shows an inverted translocation of a 3 kbp sequence from chr12 to chr10. The double line in the `Reference path` chain plot shows the chromosomal transition.
+
+### Nontandem-inv-deletion
+![nontandem-inv-del](imgs/nontandem-inv-del.png)
+This example contains a non-tandem inversion and a deletion.
 
 IGV of the same region for comparison, with supplementary alignments linked:
-![igv_comparison](imgs/igv/igv_balanced_inverted_translocation.png)
+![igv_comparison](imgs/igv/nontandem-inv-del.png)
+
+<br><br>
+
+### Phased-nontandem-inv
+![nontandem-inv-phased](imgs/nontandem-inv-phased.png)
+This example contains a non-tandem inversion, re-created via phasing.
+
+IGV of the same region for comparison, with supplementary alignments linked:
+![igv_comparison](imgs/igv/nontandem-inv-phased.png)
+
+<br><br>
+
+### Nontandem-inv
+![nontandem-inv](imgs/nontandem-inv.png)
+This example contains a non-tandem inversion.
+
+IGV of the same region for comparison, with supplementary alignments linked:
+![igv_comparison](imgs/igv/nontandem-inv.png)
+
+<br><br>
+
+
+### Balanced-translocation
+![balanced-trans](imgs/balanced-trans-dup.png)
+This example shows a translocation of two sequences from Chr12 into chr2. The double line in the `Reference path` chain plot shows the chromosomal transition.
+
+IGV of the same region for comparison, with supplementary alignments linked:
+![igv_comparison](imgs/igv/balanced-trans-dup.png)
+
+
+### Inversion with problematic breakpoint definitions
+![inv-bad-clipping](imgs/inv-bad-clipping.png)
+In this inversion case, the clipping locations for the breakpoints were unspecific due to alignment issues. The inversion is clear but presence of a flanking deletion is hard to determine.
+
+IGV of the same region for comparison, with supplementary alignments linked:
+![igv_comparison](imgs/igv/inv-bad-clipping.png)
+
+<br><br>
+
+### Incompletely resolved multi-region event
+![inv-bad-clipping](imgs/multi-chrom-broken.png)
+In this case, multiple regions are linked together through multimapping challenges in alignment.
+
+IGV of the same region for comparison, with supplementary alignments linked:
+![igv_comparison](imgs/igv/multi-chrom-broken.png)
+
+<br><br>

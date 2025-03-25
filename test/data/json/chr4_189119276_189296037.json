@@ -1,0 +1,125 @@
+{
+  "svtopo_version": "0.2.0",
+  "event_graphs": [
+    [
+      {
+        "region": {
+          "start_chrom": "chr4",
+          "start": 189119276,
+          "end_chrom": "chr4",
+          "end": 189136860
+        },
+        "coverages": {
+          "chr4:189119276": 1,
+          "chr4:189119619": 2,
+          "chr4:189123213": 3,
+          "chr4:189134137": 4,
+          "chr4:189134462": 5,
+          "chr4:189134706": 6,
+          "chr4:189134710": 7,
+          "chr4:189136438": 8,
+          "chr4:189136844": 3,
+          "chr4:189136860": 0
+        },
+        "sample_order_index": 0,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr4",
+          "start": 189136844,
+          "end_chrom": "chr4",
+          "end": 189143134
+        },
+        "coverages": {},
+        "sample_order_index": 1,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr4",
+          "start": 189143118,
+          "end_chrom": "chr4",
+          "end": 189161510
+        },
+        "coverages": {
+          "chr4:189143118": 5,
+          "chr4:189143134": 8,
+          "chr4:189143795": 7,
+          "chr4:189145209": 6,
+          "chr4:189146125": 5,
+          "chr4:189152765": 4,
+          "chr4:189153904": 3,
+          "chr4:189154003": 2,
+          "chr4:189157883": 1,
+          "chr4:189161510": 0
+        },
+        "sample_order_index": 2,
+        "orientation": ""
+      },
+      {
+        "region": {
+          "start_chrom": "chr4",
+          "start": 189248120,
+          "end_chrom": "chr4",
+          "end": 189270449
+        },
+        "coverages": {
+          "chr4:189248120": 1,
+          "chr4:189253185": 2,
+          "chr4:189256387": 3,
+          "chr4:189257082": 4,
+          "chr4:189257340": 5,
+          "chr4:189258725": 6,
+          "chr4:189262469": 7,
+          "chr4:189266078": 8,
+          "chr4:189266285": 9,
+          "chr4:189268614": 10,
+          "chr4:189269125": 11,
+          "chr4:189269225": 12,
+          "chr4:189270446": 7,
+          "chr4:189270449": 0
+        },
+        "sample_order_index": 3,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr4",
+          "start": 189270446,
+          "end_chrom": "chr4",
+          "end": 189279311
+        },
+        "coverages": {},
+        "sample_order_index": 4,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr4",
+          "start": 189279308,
+          "end_chrom": "chr4",
+          "end": 189296037
+        },
+        "coverages": {
+          "chr4:189279308": 5,
+          "chr4:189279311": 12,
+          "chr4:189279655": 11,
+          "chr4:189281462": 10,
+          "chr4:189281542": 9,
+          "chr4:189282122": 8,
+          "chr4:189282623": 7,
+          "chr4:189282930": 6,
+          "chr4:189283493": 5,
+          "chr4:189288382": 4,
+          "chr4:189292931": 3,
+          "chr4:189293274": 2,
+          "chr4:189293991": 1,
+          "chr4:189296037": 0
+        },
+        "sample_order_index": 5,
+        "orientation": "+"
+      }
+    ]
+  ]
+}

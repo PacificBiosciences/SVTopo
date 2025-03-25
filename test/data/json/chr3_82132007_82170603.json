@@ -1,0 +1,124 @@
+{
+  "svtopo_version": "0.2.0",
+  "event_graphs": [
+    [
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 82132007,
+          "end_chrom": "chr3",
+          "end": 82152797,
+          "variant_ids": [
+            "sawfish:0:8203:0:0:0"
+          ]
+        },
+        "coverages": {
+          "chr3:82132007": 1,
+          "chr3:82134600": 2,
+          "chr3:82139031": 3,
+          "chr3:82139420": 4,
+          "chr3:82140581": 5,
+          "chr3:82141200": 6,
+          "chr3:82142683": 7,
+          "chr3:82143006": 8,
+          "chr3:82144222": 9,
+          "chr3:82146856": 10,
+          "chr3:82147431": 11,
+          "chr3:82147521": 12,
+          "chr3:82147951": 13,
+          "chr3:82148243": 14,
+          "chr3:82149806": 15,
+          "chr3:82150447": 16,
+          "chr3:82150569": 17,
+          "chr3:82151191": 18,
+          "chr3:82152797": 0
+        },
+        "sample_order_index": 0,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 82152797,
+          "end_chrom": "chr3",
+          "end": 82154464,
+          "variant_ids": [
+            "sawfish:0:8203:0:0:1",
+            "sawfish:0:8203:0:0:0"
+          ]
+        },
+        "coverages": {},
+        "sample_order_index": 1,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 82154398,
+          "end_chrom": "chr3",
+          "end": 82154464,
+          "variant_ids": [
+            "sawfish:0:8203:0:0:1",
+            "sawfish:0:8205:0:0:0"
+          ]
+        },
+        "coverages": {
+          "chr3:82154398": 19,
+          "chr3:82154464": 0
+        },
+        "sample_order_index": 2,
+        "orientation": "-"
+      },
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 82154398,
+          "end_chrom": "chr3",
+          "end": 82154855,
+          "variant_ids": [
+            "sawfish:0:8205:0:0:1",
+            "sawfish:0:8205:0:0:0"
+          ]
+        },
+        "coverages": {},
+        "sample_order_index": 3,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 82154855,
+          "end_chrom": "chr3",
+          "end": 82170603,
+          "variant_ids": [
+            "sawfish:0:8205:0:0:1"
+          ]
+        },
+        "coverages": {
+          "chr3:82154855": 19,
+          "chr3:82156130": 18,
+          "chr3:82157054": 17,
+          "chr3:82158040": 16,
+          "chr3:82158653": 15,
+          "chr3:82158792": 14,
+          "chr3:82159469": 13,
+          "chr3:82160177": 12,
+          "chr3:82161728": 11,
+          "chr3:82162402": 10,
+          "chr3:82162777": 9,
+          "chr3:82163864": 8,
+          "chr3:82165089": 7,
+          "chr3:82165394": 6,
+          "chr3:82165755": 5,
+          "chr3:82166308": 4,
+          "chr3:82168143": 3,
+          "chr3:82168918": 2,
+          "chr3:82169021": 1,
+          "chr3:82170603": 0
+        },
+        "sample_order_index": 4,
+        "orientation": "+"
+      }
+    ]
+  ]
+}

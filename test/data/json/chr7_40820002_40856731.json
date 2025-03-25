@@ -1,97 +1,103 @@
-[
-  [
-    {
-      "region": {
-        "start_chrom": "chr7",
-        "start": 40820002,
-        "end_chrom": "chr7",
-        "end": 40839776
+{
+  "svtopo_version": "0.2.0",
+  "event_graphs": [
+    [
+      {
+        "region": {
+          "start_chrom": "chr7",
+          "start": 40820002,
+          "end_chrom": "chr7",
+          "end": 40839776,
+          "variant_ids": []
+        },
+        "coverages": {
+          "chr7:40820002": 1,
+          "chr7:40820507": 2,
+          "chr7:40824387": 3,
+          "chr7:40824956": 4,
+          "chr7:40826222": 5,
+          "chr7:40827078": 6,
+          "chr7:40830059": 7,
+          "chr7:40831706": 8,
+          "chr7:40831721": 9,
+          "chr7:40833337": 10,
+          "chr7:40833693": 11,
+          "chr7:40838188": 12,
+          "chr7:40838638": 13,
+          "chr7:40839201": 14,
+          "chr7:40839312": 15,
+          "chr7:40839776": 0
+        },
+        "sample_order_index": 0,
+        "orientation": "+"
       },
-      "coverages": {
-        "chr7:40820002": 1,
-        "chr7:40820507": 2,
-        "chr7:40824387": 3,
-        "chr7:40824956": 4,
-        "chr7:40826222": 5,
-        "chr7:40827078": 6,
-        "chr7:40830059": 7,
-        "chr7:40831706": 8,
-        "chr7:40831721": 9,
-        "chr7:40833337": 10,
-        "chr7:40833693": 11,
-        "chr7:40838188": 12,
-        "chr7:40838638": 13,
-        "chr7:40839201": 14,
-        "chr7:40839312": 15,
-        "chr7:40839776": 0
+      {
+        "region": {
+          "start_chrom": "chr7",
+          "start": 40839776,
+          "end_chrom": "chr7",
+          "end": 40840871,
+          "variant_ids": []
+        },
+        "coverages": {},
+        "sample_order_index": 1,
+        "orientation": "+"
       },
-      "sample_order_index": 0,
-      "orientation": "+"
-    },
-    {
-      "region": {
-        "start_chrom": "chr7",
-        "start": 40839776,
-        "end_chrom": "chr7",
-        "end": 40840871
+      {
+        "region": {
+          "start_chrom": "chr7",
+          "start": 40839776,
+          "end_chrom": "chr7",
+          "end": 40840870,
+          "variant_ids": []
+        },
+        "coverages": {
+          "chr7:40839776": 14,
+          "chr7:40840870": 0
+        },
+        "sample_order_index": 2,
+        "orientation": "-"
       },
-      "coverages": {},
-      "sample_order_index": 1,
-      "orientation": "+"
-    },
-    {
-      "region": {
-        "start_chrom": "chr7",
-        "start": 40839776,
-        "end_chrom": "chr7",
-        "end": 40840871
+      {
+        "region": {
+          "start_chrom": "chr7",
+          "start": 40839776,
+          "end_chrom": "chr7",
+          "end": 40840871,
+          "variant_ids": []
+        },
+        "coverages": {},
+        "sample_order_index": 3,
+        "orientation": "+"
       },
-      "coverages": {
-        "chr7:40839776": 14,
-        "chr7:40840076": 15,
-        "chr7:40840870": 1,
-        "chr7:40840871": 0
-      },
-      "sample_order_index": 2,
-      "orientation": "-"
-    },
-    {
-      "region": {
-        "start_chrom": "chr7",
-        "start": 40839776,
-        "end_chrom": "chr7",
-        "end": 40840871
-      },
-      "coverages": {},
-      "sample_order_index": 3,
-      "orientation": "+"
-    },
-    {
-      "region": {
-        "start_chrom": "chr7",
-        "start": 40840870,
-        "end_chrom": "chr7",
-        "end": 40856731
-      },
-      "coverages": {
-        "chr7:40840870": 14,
-        "chr7:40841449": 13,
-        "chr7:40841530": 12,
-        "chr7:40841832": 11,
-        "chr7:40842385": 10,
-        "chr7:40843710": 9,
-        "chr7:40846493": 8,
-        "chr7:40847570": 7,
-        "chr7:40848028": 6,
-        "chr7:40848763": 5,
-        "chr7:40851101": 4,
-        "chr7:40852314": 3,
-        "chr7:40852585": 2,
-        "chr7:40853889": 1,
-        "chr7:40856731": 0
-      },
-      "sample_order_index": 4,
-      "orientation": "+"
-    }
+      {
+        "region": {
+          "start_chrom": "chr7",
+          "start": 40840870,
+          "end_chrom": "chr7",
+          "end": 40856731,
+          "variant_ids": []
+        },
+        "coverages": {
+          "chr7:40840870": 14,
+          "chr7:40841449": 13,
+          "chr7:40841530": 12,
+          "chr7:40841832": 11,
+          "chr7:40842385": 10,
+          "chr7:40843710": 9,
+          "chr7:40846493": 8,
+          "chr7:40847570": 7,
+          "chr7:40848028": 6,
+          "chr7:40848763": 5,
+          "chr7:40851101": 4,
+          "chr7:40852314": 3,
+          "chr7:40852585": 2,
+          "chr7:40853889": 1,
+          "chr7:40856731": 0
+        },
+        "sample_order_index": 4,
+        "orientation": "+"
+      }
+    ]
   ]
-]
+}

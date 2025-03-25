@@ -1,0 +1,111 @@
+{
+  "svtopo_version": "0.2.0",
+  "event_graphs": [
+    [
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 83782468,
+          "end_chrom": "chr3",
+          "end": 83803978,
+          "variant_ids": [
+            "sawfish:0:8229:0:0"
+          ]
+        },
+        "coverages": {
+          "chr3:83782468": 1,
+          "chr3:83803024": 2,
+          "chr3:83803964": 1,
+          "chr3:83803978": 0
+        },
+        "sample_order_index": 0,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 83803964,
+          "end_chrom": "chr3",
+          "end": 83806211,
+          "variant_ids": [
+            "sawfish:0:8229:0:0",
+            "sawfish:0:8229:0:0"
+          ]
+        },
+        "coverages": {},
+        "sample_order_index": 1,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 83806198,
+          "end_chrom": "chr3",
+          "end": 83816465,
+          "variant_ids": [
+            "sawfish:0:8229:0:0"
+          ]
+        },
+        "coverages": {
+          "chr3:83806198": 1,
+          "chr3:83806211": 2,
+          "chr3:83807023": 1,
+          "chr3:83816465": 0
+        },
+        "sample_order_index": 2,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 84045195,
+          "end_chrom": "chr3",
+          "end": 84055791,
+          "variant_ids": [
+            "sawfish:0:8232:0:0"
+          ]
+        },
+        "coverages": {
+          "chr3:84045195": 1,
+          "chr3:84055415": 2,
+          "chr3:84055791": 0
+        },
+        "sample_order_index": 3,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 84055791,
+          "end_chrom": "chr3",
+          "end": 84058233,
+          "variant_ids": [
+            "sawfish:0:8232:0:0",
+            "sawfish:0:8232:0:0"
+          ]
+        },
+        "coverages": {},
+        "sample_order_index": 4,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 84058233,
+          "end_chrom": "chr3",
+          "end": 84078223,
+          "variant_ids": [
+            "sawfish:0:8232:0:0"
+          ]
+        },
+        "coverages": {
+          "chr3:84058233": 2,
+          "chr3:84058972": 1,
+          "chr3:84078223": 0
+        },
+        "sample_order_index": 5,
+        "orientation": "+"
+      }
+    ]
+  ]
+}

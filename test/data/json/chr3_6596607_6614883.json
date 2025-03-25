@@ -1,71 +1,82 @@
-[
-  [
-    {
-      "region": {
-        "start_chrom": "chr3",
-        "start": 6596607,
-        "end_chrom": "chr3",
-        "end": 6608473
+{
+  "svtopo_version": "0.2.0",
+  "event_graphs": [
+    [
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 6596607,
+          "end_chrom": "chr3",
+          "end": 6608473,
+          "variant_ids": []
+        },
+        "coverages": {
+          "chr3:6596607": 1,
+          "chr3:6597532": 2,
+          "chr3:6607740": 3,
+          "chr3:6608473": 0
+        },
+        "sample_order_index": 0,
+        "orientation": "+"
       },
-      "coverages": {
-        "chr3:6596607": 1,
-        "chr3:6597532": 2,
-        "chr3:6607740": 3,
-        "chr3:6608473": 0
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 6604603,
+          "end_chrom": "chr3",
+          "end": 6608473,
+          "variant_ids": []
+        },
+        "coverages": {},
+        "sample_order_index": 1,
+        "orientation": "-"
       },
-      "sample_order_index": 0,
-      "orientation": "+"
-    },
-    {
-      "region": {
-        "start_chrom": "chr3",
-        "start": 6604603,
-        "end_chrom": "chr3",
-        "end": 6608473
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 6604526,
+          "end_chrom": "chr3",
+          "end": 6604603,
+          "variant_ids": []
+        },
+        "coverages": {
+          "chr3:6604526": 2,
+          "chr3:6604537": 3,
+          "chr3:6604603": 0
+        },
+        "sample_order_index": 2,
+        "orientation": "-"
       },
-      "coverages": {},
-      "sample_order_index": 1,
-      "orientation": "-"
-    },
-    {
-      "region": {
-        "start_chrom": "chr3",
-        "start": 6604526,
-        "end_chrom": "chr3",
-        "end": 6604603
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 6604526,
+          "end_chrom": "chr3",
+          "end": 6612956,
+          "variant_ids": []
+        },
+        "coverages": {},
+        "sample_order_index": 3,
+        "orientation": "+"
       },
-      "coverages": {
-        "chr3:6604526": 2,
-        "chr3:6604603": 0
-      },
-      "sample_order_index": 2,
-      "orientation": "-"
-    },
-    {
-      "region": {
-        "start_chrom": "chr3",
-        "start": 6604526,
-        "end_chrom": "chr3",
-        "end": 6612956
-      },
-      "coverages": {},
-      "sample_order_index": 3,
-      "orientation": "+"
-    },
-    {
-      "region": {
-        "start_chrom": "chr3",
-        "start": 6612956,
-        "end_chrom": "chr3",
-        "end": 6614883
-      },
-      "coverages": {
-        "chr3:6612956": 2,
-        "chr3:6613990": 1,
-        "chr3:6614883": 0
-      },
-      "sample_order_index": 4,
-      "orientation": "+"
-    }
+      {
+        "region": {
+          "start_chrom": "chr3",
+          "start": 6612944,
+          "end_chrom": "chr3",
+          "end": 6629690,
+          "variant_ids": []
+        },
+        "coverages": {
+          "chr3:6612944": 1,
+          "chr3:6612956": 3,
+          "chr3:6613990": 2,
+          "chr3:6614883": 1,
+          "chr3:6629690": 0
+        },
+        "sample_order_index": 4,
+        "orientation": "+"
+      }
+    ]
   ]
-]
+}

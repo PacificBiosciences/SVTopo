@@ -22,12 +22,12 @@ def setup():
     parser.add_argument(
         "-r",
         "--reference-file-path",
-        help="the path to a reference file, either json or image",
+        help="the path to a reference file: json, image, or test",
     )
     parser.add_argument(
         "-t",
         "--test-file-path",
-        help="the path to a test file, either json or image",
+        help="the path to a test file: json, image, or text",
     )
     args = parser.parse_args()
     return args
@@ -81,7 +81,6 @@ def ordered(obj):
     else:
         return obj
 
-
 def compare_jsons(reference_json_path, test_json_path):
     """
     Compare two json files from cnidaria and error if they don't match
@@ -120,10 +119,38 @@ def compare_jsons(reference_json_path, test_json_path):
         )
 
 
+def compare_text_files(reference_text_path, test_text_path):
+    """
+    Compare two text files from cnidaria and error if they don't match
+    """
+    with open(reference_text_path, "r") as ref_fh:
+        ref_text = ref_fh.read().strip()
+    with open(test_text_path, "r") as test_fh:
+        test_text = test_fh.read().strip()
+    
+    if not ref_text == test_text:
+        print(
+            "{}Test text file {} does not match reference text file {}{}".format(
+                Colors.RED, test_text_path, reference_text_path, Colors.RESET
+            ),
+            file=sys.stderr,
+        )
+        sys.exit(-1)    
+    else:
+        print(
+            "{}Test text file {} matches reference text file {}{}".format(
+                Colors.GREEN, test_text_path, reference_text_path, Colors.RESET
+            ),
+            file=sys.stdout,
+        )
+
+
 args = setup()
 ref_file_path = args.reference_file_path
 test_file_path = args.test_file_path
 if ref_file_path.endswith("json"):
     compare_jsons(reference_json_path=ref_file_path, test_json_path=test_file_path)
-else:
+elif ref_file_path.endswith("png"):
     compare_plots(reference_image_path=ref_file_path, test_image_path=test_file_path)
+else:
+    compare_text_files(reference_text_path=ref_file_path, test_text_path=test_file_path)

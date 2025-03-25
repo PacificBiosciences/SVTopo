@@ -1,0 +1,11 @@
+/target
+*tmp*
+*.egg-info
+__pycache__/
+HiFi-SVTopoVz/build
+*.egg
+*.log
+.snakemake/
+.keras/
+*.DS_Store
+SVTopoVz/build/
