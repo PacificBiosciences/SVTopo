@@ -6,6 +6,6 @@
 
 <h3 align="center">Complex structural variant visualization for HiFi sequencing data</h3>
 
-This branch of the repository exists only to showcase a multi-sample web viewer of SVTopo results, as https://pacificbiosciences.github.io/HiFi-SVTopo/. 
+This branch of the repository exists only to showcase a multi-sample web viewer of SVTopo results, as https://pacificbiosciences.github.io/SVTopo/. 
 
-For more SVTopo details, see the main branch at https://github.com/PacificBiosciences/HiFi-SVTopo.
+For more SVTopo details, see the main branch at https://github.com/PacificBiosciences/SVTopo.
