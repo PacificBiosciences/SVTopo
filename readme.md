@@ -6,7 +6,7 @@
 
 <h4 align="center">Complex structural variant visualization for HiFi sequencing data</h3>
 
-SVTopo represents complex structural variants (SVs) to enhance PacBio HiFi data. SVTopo determines connections between SV breakends using aligned reads and, optionally, variant calling output from the [sawfish](https://github.com/PacificBiosciences/sawfish) variant caller. SVTopo outputs connected breakends as JSON data and uses the SVTopoVz python utility to plot complex structural rearrangements as high-quality images.
+SVTopo represents complex structural variants (SVs) to enhance PacBio HiFi data analysis. SVTopo determines connections between SV breakends using VCF and aligned BAM inputs, performing best when paired with the [sawfish](https://github.com/PacificBiosciences/sawfish) variant caller. SVTopo outputs connected breakends as JSON data and uses the SVTopoVz python utility to plot complex structural rearrangements as high-quality images.
 
 Key Features (see [Result Interpretation](docs/result_interpretation.md) for more details):
 * Top section: illustration of connected aligned sequences as blocks, showing order and orientation in the sample genome relative to the reference

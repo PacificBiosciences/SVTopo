@@ -7,8 +7,8 @@ use log::debug;
 
 use crate::{
     containers::{
-        ComplexSVBlock, ComplexSVCalls, Coordinate, EventGraph, FwdStrandSplitReadSegment,
-        Orientation,
+        AnnotationProcessingState, BlockProcessingContext, BlockProcessingState, ComplexSVBlock,
+        ComplexSVCalls, Coordinate, EventGraph, FwdStrandSplitReadSegment, Orientation,
     },
     utils::MAX_GRAPH_SIZE,
 };
@@ -32,7 +32,7 @@ pub fn annotate_graphs(
             );
             let ends = get_event_ends(&event_graph.graph);
             if let (Some(start), Some(end)) = ends {
-                log::debug!("Skipped event: {} -> {}", start, end,);
+                log::debug!("Skipped event: {start} -> {end}",);
             }
             let mut keys: Vec<&u32> = event_graph.graph.keys().collect();
             keys.sort();
@@ -98,136 +98,227 @@ fn get_event_ends(
 /// 1) Loop through the coordinates at each sample order index in the event graph.
 /// 2) Add start: Find coverage going backward (upstream) from the first block and add it as the start.
 /// 3) Add unspanned: Find coverage for unspanned connections going back from the current coordinate to
-///     any at the previous level. Add these as unspanned connections.
+///    any at the previous level. Add these as unspanned connections.
 /// 4) Add spanned: Find coverage for spanned connections going forward from the current coordinate.
 /// 5) Add tied connections: Find coverage for unspanned connections between this coordinate
-///     and any others at the same sample order index, then add them as unspanned connections.
+///    and any others at the same sample order index, then add them as unspanned connections.
 /// 6) When all levels have been traversed, add a final spanned coordinate from the last one going downstream.
 fn annotate_graph(
     event_graph: &HashMap<u32, Vec<Coordinate>>,
     clip_coordinates: &HashMap<Coordinate, HashSet<FwdStrandSplitReadSegment>>,
 ) -> Vec<ComplexSVBlock> {
     let mut annotated_event_graph: Vec<ComplexSVBlock> = Vec::new();
-    if let Some(max_idx) = event_graph.keys().max() {
-        // the complex event start is in forward orientation. Each directly connected event orientation after
-        // can be inferred from it, but when the chain breaks the orientation becomes unknowable
-        let max_idx = *max_idx as i64;
-        let mut already_processed_coordinates: HashSet<Coordinate> = HashSet::new();
 
-        let mut last_event_spanned = false;
-        let mut order_scaler = 0;
-        for sample_idx in 0..max_idx + 1 {
-            let is_first = sample_idx == 0;
-            if let Some(coordinates) = event_graph.get(&(sample_idx as u32)).cloned() {
-                let mut prev_coords = Vec::new();
-                if !is_first {
-                    if let Some(found_prev_coords) = event_graph.get(&(sample_idx as u32 - 1)) {
-                        prev_coords.append(&mut found_prev_coords.clone());
-                    }
-                }
-                (last_event_spanned, order_scaler) = add_blocks(
-                    &coordinates,
-                    event_graph,
-                    &mut already_processed_coordinates,
-                    is_first,
-                    sample_idx == max_idx,
-                    clip_coordinates,
-                    &mut annotated_event_graph,
-                    prev_coords,
-                    last_event_spanned,
-                    order_scaler,
-                    sample_idx,
-                );
-            }
-        }
-        add_last_block(
+    if let Some(max_idx) = event_graph.keys().max() {
+        let max_idx = *max_idx as i64;
+        let mut processing_state = initialize_annotation_state();
+
+        process_all_sample_indices(
+            event_graph,
+            clip_coordinates,
+            &mut annotated_event_graph,
+            &mut processing_state,
+            max_idx,
+        );
+
+        finalize_annotation(
             clip_coordinates,
             &mut annotated_event_graph,
             event_graph,
             max_idx as u32,
         );
     }
+
     annotated_event_graph
+}
+
+/// Initializes the processing state for graph annotation
+fn initialize_annotation_state() -> AnnotationProcessingState {
+    AnnotationProcessingState {
+        already_processed_coordinates: HashSet::new(),
+        last_event_spanned: false,
+        order_scaler: 0,
+    }
+}
+
+/// Processes all sample indices in the event graph
+fn process_all_sample_indices(
+    event_graph: &HashMap<u32, Vec<Coordinate>>,
+    clip_coordinates: &HashMap<Coordinate, HashSet<FwdStrandSplitReadSegment>>,
+    annotated_event_graph: &mut Vec<ComplexSVBlock>,
+    processing_state: &mut AnnotationProcessingState,
+    max_idx: i64,
+) {
+    for sample_idx in 0..max_idx + 1 {
+        process_single_sample_index(
+            event_graph,
+            clip_coordinates,
+            annotated_event_graph,
+            processing_state,
+            sample_idx,
+            max_idx,
+        );
+    }
+}
+
+/// Processes coordinates for a single sample index
+fn process_single_sample_index(
+    event_graph: &HashMap<u32, Vec<Coordinate>>,
+    clip_coordinates: &HashMap<Coordinate, HashSet<FwdStrandSplitReadSegment>>,
+    annotated_event_graph: &mut Vec<ComplexSVBlock>,
+    processing_state: &mut AnnotationProcessingState,
+    sample_idx: i64,
+    max_idx: i64,
+) {
+    if let Some(coordinates) = event_graph.get(&(sample_idx as u32)).cloned() {
+        let prev_coords = get_previous_coordinates(event_graph, sample_idx);
+        let (mut context, mut state) = setup_processing_context(
+            event_graph,
+            clip_coordinates,
+            annotated_event_graph,
+            processing_state,
+            sample_idx,
+            max_idx,
+            prev_coords,
+        );
+
+        let (last_event_spanned, order_scaler) = add_blocks(&coordinates, &mut context, &mut state);
+
+        // Update processing state with results
+        processing_state.last_event_spanned = last_event_spanned;
+        processing_state.order_scaler = order_scaler;
+    }
+}
+
+/// Gets the previous coordinates for a given sample index
+fn get_previous_coordinates(
+    event_graph: &HashMap<u32, Vec<Coordinate>>,
+    sample_idx: i64,
+) -> Vec<Coordinate> {
+    let mut prev_coords = Vec::new();
+    if sample_idx > 0 {
+        if let Some(found_prev_coords) = event_graph.get(&(sample_idx as u32 - 1)) {
+            prev_coords.append(&mut found_prev_coords.clone());
+        }
+    }
+    prev_coords
+}
+
+/// Sets up the processing context and state for a sample index
+fn setup_processing_context<'a>(
+    event_graph: &'a HashMap<u32, Vec<Coordinate>>,
+    clip_coordinates: &'a HashMap<Coordinate, HashSet<FwdStrandSplitReadSegment>>,
+    annotated_event_graph: &'a mut Vec<ComplexSVBlock>,
+    processing_state: &'a mut AnnotationProcessingState,
+    sample_idx: i64,
+    max_idx: i64,
+    prev_coords: Vec<Coordinate>,
+) -> (BlockProcessingContext<'a>, BlockProcessingState) {
+    let context = BlockProcessingContext {
+        event_graph,
+        clip_coordinates,
+        already_processed_coordinates: &mut processing_state.already_processed_coordinates,
+        annotated_event_graph,
+    };
+
+    let state = BlockProcessingState {
+        sample_idx,
+        is_first: sample_idx == 0,
+        is_last: sample_idx == max_idx,
+        prev_coords,
+        last_event_spanned: processing_state.last_event_spanned,
+        order_scaler: processing_state.order_scaler,
+    };
+
+    (context, state)
+}
+
+/// Finalizes the annotation by adding the last block
+fn finalize_annotation(
+    clip_coordinates: &HashMap<Coordinate, HashSet<FwdStrandSplitReadSegment>>,
+    annotated_event_graph: &mut Vec<ComplexSVBlock>,
+    event_graph: &HashMap<u32, Vec<Coordinate>>,
+    max_sample_idx: u32,
+) {
+    add_last_block(
+        clip_coordinates,
+        annotated_event_graph,
+        event_graph,
+        max_sample_idx,
+    );
 }
 
 /// Loop through and add coordinate blocks that are tied at the same
 /// level of the sample order to the annotated event graph.
 fn add_blocks(
     coordinates: &[Coordinate],
-    event_graph: &HashMap<u32, Vec<Coordinate>>,
-    already_processed_coordinates: &mut HashSet<Coordinate>,
-    is_first: bool,
-    is_last: bool,
-    clip_coordinates: &HashMap<Coordinate, HashSet<FwdStrandSplitReadSegment>>,
-    annotated_event_graph: &mut Vec<ComplexSVBlock>,
-    mut prev_coords: Vec<Coordinate>,
-    mut last_event_spanned: bool,
-    order_scaler: u32,
-    sample_idx: i64,
+    context: &mut BlockProcessingContext,
+    state: &mut BlockProcessingState,
 ) -> (bool, u32) {
     let mut max_order_scaler = 0;
     for (i, coordinate) in coordinates.iter().enumerate() {
-        let mut curr_order_scaler = order_scaler;
-        if already_processed_coordinates.contains(coordinate) {
+        let mut curr_order_scaler = state.order_scaler;
+        if context.already_processed_coordinates.contains(coordinate) {
             continue;
         }
-        if is_first {
+        if state.is_first {
             add_first_block(
-                clip_coordinates,
+                context.clip_coordinates,
                 coordinate,
-                annotated_event_graph,
-                &mut prev_coords,
+                context.annotated_event_graph,
+                &mut state.prev_coords,
             );
-            last_event_spanned = true;
+            state.last_event_spanned = true;
         } else {
             let mut unspanned_added = false;
             for (mut unspanned_block, _) in
-                get_unspanned_connections(coordinate, &prev_coords, clip_coordinates)
+                get_unspanned_connections(coordinate, &state.prev_coords, context.clip_coordinates)
             {
-                unspanned_block.sample_order_index = curr_order_scaler + sample_idx as u32;
-                annotated_event_graph.push(unspanned_block);
+                unspanned_block.sample_order_index = curr_order_scaler + state.sample_idx as u32;
+                context.annotated_event_graph.push(unspanned_block);
                 unspanned_added = true;
-                already_processed_coordinates.insert(coordinate.clone());
-                last_event_spanned = false;
+                context
+                    .already_processed_coordinates
+                    .insert(coordinate.clone());
+                state.last_event_spanned = false;
             }
             let blocks_to_add: Vec<(ComplexSVBlock, Coordinate)> = generate_spanned_blocks(
-                sample_idx,
-                event_graph,
-                clip_coordinates,
+                state.sample_idx,
+                context.event_graph,
+                context.clip_coordinates,
                 coordinate,
-                already_processed_coordinates,
-                is_last,
+                context.already_processed_coordinates,
+                state.is_last,
             );
-            if last_event_spanned {
+            if state.last_event_spanned {
                 curr_order_scaler += 1;
             }
             for (mut spanned_block, _) in blocks_to_add {
-                spanned_block.sample_order_index = curr_order_scaler + sample_idx as u32;
+                spanned_block.sample_order_index = curr_order_scaler + state.sample_idx as u32;
                 if unspanned_added {
                     spanned_block.sample_order_index += 1;
                 }
-                annotated_event_graph.push(spanned_block);
-                last_event_spanned = true;
+                context.annotated_event_graph.push(spanned_block);
+                state.last_event_spanned = true;
             }
         }
         if curr_order_scaler > max_order_scaler {
             max_order_scaler = curr_order_scaler;
         }
 
-        // if there are multiple tied coordinates at this sample_order_index level and this is the first one,
-        // check for unspanned connections that join them
         if coordinates.len() > 1 && i == 0 {
-            if let Some(tied_coords) = event_graph.get(&(sample_idx as u32)) {
+            if let Some(tied_coords) = context.event_graph.get(&(state.sample_idx as u32)) {
                 let tied_unspanned_blocks =
-                    get_unspanned_connections(coordinate, tied_coords, clip_coordinates);
+                    get_unspanned_connections(coordinate, tied_coords, context.clip_coordinates);
                 for (mut tied_unspanned_block, _) in tied_unspanned_blocks {
-                    tied_unspanned_block.sample_order_index = curr_order_scaler + sample_idx as u32;
-                    annotated_event_graph.push(tied_unspanned_block);
+                    tied_unspanned_block.sample_order_index =
+                        curr_order_scaler + state.sample_idx as u32;
+                    context.annotated_event_graph.push(tied_unspanned_block);
                 }
             };
         }
     }
-    (last_event_spanned, max_order_scaler)
+    (state.last_event_spanned, max_order_scaler)
 }
 
 /// Add the first block to the graph
@@ -261,8 +352,8 @@ fn add_first_block(
 /// **Steps:**
 ///
 /// 1. For each coordinate from the un-annotated event graph at the final sample index,
-///     perform a fuzzy match check to see if it's been added already (match to previous end coord).
-///     If not already added, continue with the following steps.
+///    perform a fuzzy match check to see if it's been added already (match to previous end coord).
+///    If not already added, continue with the following steps.
 /// 2. Check for any unspanned connections to previous and add them.
 /// 3. Check for spanned connections from this putative end coordinate going downstream, add if found.
 fn add_last_block(
@@ -579,78 +670,161 @@ fn add_orientations_directionally(
     if reverse_iterate {
         annotated_event_graph.reverse();
     }
+
+    let orientation_context = OrientationInferenceContext::new(reverse_iterate);
     let mut prev_block_opt: Option<ComplexSVBlock> = None;
+
     for block in annotated_event_graph.iter_mut() {
-        if block.sample_order_index == 0 || block.sample_order_index == last_known_sample_order_idx
-        {
-            block.orientation = Orientation::Forward;
+        if should_set_forward_orientation(block, last_known_sample_order_idx) {
+            set_block_forward_orientation(block, &mut prev_block_opt);
+        } else if has_known_orientation(block) {
             prev_block_opt = Some(block.clone());
-        } else if !(block.orientation == Orientation::Missing) {
-            // if we've reached a block that already has a known orientation, we're done
-            prev_block_opt = Some(block.clone());
-        } else if let Some(prev_block) = prev_block_opt {
-            if prev_block.orientation == Orientation::Missing {
-                break; // once the chain of connections from the beginning has broken, we can't infer orientations anymore
+        } else if let Some(prev_block) = prev_block_opt.clone() {
+            if !can_continue_orientation_inference(&prev_block) {
+                break;
             }
-            let inner_orientation_forward = if reverse_iterate {
-                Orientation::Reverse
-            } else {
-                Orientation::Forward
-            };
-            let inner_orientation_reverse = if reverse_iterate {
-                Orientation::Forward
-            } else {
-                Orientation::Reverse
-            };
 
-            if block.coverages.is_empty() && !(prev_block.orientation == Orientation::Missing) {
-                // if this block is unspanned and the previous one has a known orientation
-                // we can assume this one's order from start and end
-                if block.region.start < block.region.end {
-                    block.orientation = inner_orientation_forward;
-                } else {
-                    block.orientation = inner_orientation_reverse;
-                }
-                prev_block_opt = Some(block.clone());
-            } else if prev_block.coverages.is_empty()
-                && !(prev_block.orientation == Orientation::Missing)
-            {
-                // if the previous block has a known orientation and is an
-                // unspanned connecting block, we infer the current block's orientation from previous
-                let mut prev_block_end =
-                    Coordinate::new(prev_block.region.end_chrom.clone(), prev_block.region.end);
-                if prev_block.orientation == inner_orientation_reverse {
-                    prev_block_end = Coordinate::new(
-                        prev_block.region.start_chrom.clone(),
-                        prev_block.region.start,
-                    );
-                }
-
-                let curr_block_start =
-                    Coordinate::new(block.region.start_chrom.clone(), block.region.start);
-                let curr_block_end =
-                    Coordinate::new(block.region.end_chrom.clone(), block.region.end);
-                if prev_block_end.is_within(&curr_block_start) {
-                    // previous unspanned block connects to the start of the current block,
-                    // which means the orientation is forward
-                    block.orientation = inner_orientation_forward;
-                } else if prev_block_end.is_within(&curr_block_end) {
-                    // previous unspanned block connects to the end of the current block,
-                    // which means the orientation is reverse
-                    block.orientation = inner_orientation_reverse;
-                }
-                prev_block_opt = Some(block.clone());
-            } else {
-                // if neither the previous nor current block is an unspanned connecting block,
-                // we can't infer any more orientations because we've reached an ambiguous connection
+            if !infer_block_orientation(
+                block,
+                &prev_block,
+                &orientation_context,
+                &mut prev_block_opt,
+            ) {
                 break;
             }
         } else {
             break;
         }
     }
+
     if reverse_iterate {
         annotated_event_graph.reverse();
+    }
+}
+
+/// Context for orientation inference based on iteration direction
+struct OrientationInferenceContext {
+    forward: Orientation,
+    reverse: Orientation,
+}
+
+impl OrientationInferenceContext {
+    fn new(reverse_iterate: bool) -> Self {
+        if reverse_iterate {
+            Self {
+                forward: Orientation::Reverse,
+                reverse: Orientation::Forward,
+            }
+        } else {
+            Self {
+                forward: Orientation::Forward,
+                reverse: Orientation::Reverse,
+            }
+        }
+    }
+}
+
+/// Determines if a block should be set to forward orientation
+fn should_set_forward_orientation(
+    block: &ComplexSVBlock,
+    last_known_sample_order_idx: u32,
+) -> bool {
+    block.sample_order_index == 0 || block.sample_order_index == last_known_sample_order_idx
+}
+
+/// Sets a block to forward orientation and updates previous block
+fn set_block_forward_orientation(
+    block: &mut ComplexSVBlock,
+    prev_block_opt: &mut Option<ComplexSVBlock>,
+) {
+    block.orientation = Orientation::Forward;
+    *prev_block_opt = Some(block.clone());
+}
+
+/// Checks if a block already has a known orientation
+fn has_known_orientation(block: &ComplexSVBlock) -> bool {
+    !(block.orientation == Orientation::Missing)
+}
+
+/// Determines if orientation inference can continue based on previous block
+fn can_continue_orientation_inference(prev_block: &ComplexSVBlock) -> bool {
+    prev_block.orientation != Orientation::Missing
+}
+
+/// Attempts to infer block orientation based on previous block
+fn infer_block_orientation(
+    block: &mut ComplexSVBlock,
+    prev_block: &ComplexSVBlock,
+    context: &OrientationInferenceContext,
+    prev_block_opt: &mut Option<ComplexSVBlock>,
+) -> bool {
+    if is_unspanned_block(block) && has_known_orientation(prev_block) {
+        infer_unspanned_block_orientation(block, context, prev_block_opt);
+        true
+    } else if is_unspanned_block(prev_block) && has_known_orientation(prev_block) {
+        infer_from_unspanned_previous_block(block, prev_block, context, prev_block_opt)
+    } else {
+        // Can't infer more orientations - ambiguous connection
+        false
+    }
+}
+
+/// Checks if a block is unspanned (has no coverages)
+fn is_unspanned_block(block: &ComplexSVBlock) -> bool {
+    block.coverages.is_empty()
+}
+
+/// Infers orientation for an unspanned block based on region coordinates
+fn infer_unspanned_block_orientation(
+    block: &mut ComplexSVBlock,
+    context: &OrientationInferenceContext,
+    prev_block_opt: &mut Option<ComplexSVBlock>,
+) {
+    if block.region.start < block.region.end {
+        block.orientation = context.forward;
+    } else {
+        block.orientation = context.reverse;
+    }
+    *prev_block_opt = Some(block.clone());
+}
+
+/// Infers current block orientation from an unspanned previous block
+fn infer_from_unspanned_previous_block(
+    block: &mut ComplexSVBlock,
+    prev_block: &ComplexSVBlock,
+    context: &OrientationInferenceContext,
+    prev_block_opt: &mut Option<ComplexSVBlock>,
+) -> bool {
+    let prev_block_end = get_previous_block_effective_end(prev_block, context);
+    let curr_block_start = Coordinate::new(block.region.start_chrom.clone(), block.region.start);
+    let curr_block_end = Coordinate::new(block.region.end_chrom.clone(), block.region.end);
+
+    if prev_block_end.is_within(&curr_block_start) {
+        block.orientation = context.forward;
+        *prev_block_opt = Some(block.clone());
+        true
+    } else if prev_block_end.is_within(&curr_block_end) {
+        block.orientation = context.reverse;
+        *prev_block_opt = Some(block.clone());
+        true
+    } else {
+        // Could not determine connection point
+        true
+    }
+}
+
+/// Gets the effective end coordinate of a previous block based on its orientation
+fn get_previous_block_effective_end(
+    prev_block: &ComplexSVBlock,
+    context: &OrientationInferenceContext,
+) -> Coordinate {
+    if prev_block.orientation == context.reverse {
+        Coordinate::new(
+            prev_block.region.start_chrom.clone(),
+            prev_block.region.start,
+        )
+    } else {
+        Coordinate::new(prev_block.region.end_chrom.clone(), prev_block.region.end)
     }
 }
 
@@ -798,8 +972,8 @@ fn get_second_break_alignments(
     let clip_cluster_keys: Vec<&Coordinate> = clip_alignments.keys().collect();
     for clip_cluster in clip_cluster_keys.iter() {
         if second_coordinate.is_within(clip_cluster) {
-            let left_coord = std::cmp::min(first_coordinate, &second_coordinate);
-            let right_coord = std::cmp::max(first_coordinate, &second_coordinate);
+            let left_coord = std::cmp::min(first_coordinate, second_coordinate);
+            let right_coord = std::cmp::max(first_coordinate, second_coordinate);
             let strict_left_side = left_coord.start;
             let permissive_left_side = left_coord.start - left_coord.confidence_interval.0;
             let strict_right_side = right_coord.end;
@@ -850,8 +1024,7 @@ fn is_alignment_in_bounds(
     let double_clipped = a.is_start_softclipped && a.is_end_softclipped;
     let strictly_in_bounds = (a.pos >= strict_left_side) && (a.end <= strict_right_side);
 
-    let alignment_in_bounds = strictly_in_bounds || (permissively_in_bounds && double_clipped);
-    alignment_in_bounds
+    strictly_in_bounds || (permissively_in_bounds && double_clipped)
 }
 
 /// Use a vector of alignments to generate a BTreeMap of coverages for a block,
@@ -933,4 +1106,498 @@ pub fn alignments_to_coverage(
         coverages.insert(coordinate, coverage);
     }
     coverages
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils;
+
+    fn create_test_coordinate(chrom: &str, pos: i64) -> Coordinate {
+        Coordinate::new(chrom.to_string(), pos)
+    }
+
+    fn create_test_event_graph() -> HashMap<u32, Vec<Coordinate>> {
+        let mut event_graph = HashMap::new();
+        event_graph.insert(0, vec![create_test_coordinate("chr1", 1000)]);
+        event_graph.insert(1, vec![create_test_coordinate("chr1", 2000)]);
+        event_graph.insert(2, vec![create_test_coordinate("chr1", 3000)]);
+        event_graph
+    }
+
+    fn create_test_clip_coordinates() -> HashMap<Coordinate, HashSet<FwdStrandSplitReadSegment>> {
+        let mut clip_coordinates = HashMap::new();
+
+        let coord1 = create_test_coordinate("chr1", 1000);
+        let coord2 = create_test_coordinate("chr1", 2000);
+        let coord3 = create_test_coordinate("chr1", 3000);
+
+        let mut alignments1 = HashSet::new();
+        let shared_alignment =
+            utils::create_test_alignment_with_clips("chr1", 995, 1010, "read1", true, true);
+        alignments1.insert(shared_alignment.clone());
+        alignments1.insert(utils::create_test_alignment_with_clips(
+            "chr1", 990, 1095, "read2", true, true,
+        ));
+
+        let mut alignments2 = HashSet::new();
+        alignments2.insert(shared_alignment);
+        alignments2.insert(utils::create_test_alignment_with_clips(
+            "chr1", 1995, 2100, "read3", true, true,
+        ));
+        alignments2.insert(utils::create_test_alignment_with_clips(
+            "chr1", 1990, 2095, "read4", true, true,
+        ));
+
+        let mut alignments3 = HashSet::new();
+        alignments3.insert(utils::create_test_alignment_with_clips(
+            "chr1", 2995, 3100, "read5", true, true,
+        ));
+        alignments3.insert(utils::create_test_alignment_with_clips(
+            "chr1", 2990, 3095, "read6", true, true,
+        ));
+
+        clip_coordinates.insert(coord1, alignments1);
+        clip_coordinates.insert(coord2, alignments2);
+        clip_coordinates.insert(coord3, alignments3);
+
+        clip_coordinates
+    }
+
+    #[test]
+    fn test_get_event_ends() {
+        let event_graph = create_test_event_graph();
+        let (start, end) = get_event_ends(&event_graph);
+
+        assert!(start.is_some());
+        assert!(end.is_some());
+        assert_eq!(start.unwrap().start, 1000);
+        assert_eq!(end.unwrap().start, 3000);
+    }
+
+    #[test]
+    fn test_get_event_ends_empty() {
+        let event_graph = HashMap::new();
+        let (start, end) = get_event_ends(&event_graph);
+
+        assert!(start.is_none());
+        assert!(end.is_none());
+    }
+
+    #[test]
+    fn test_initialize_annotation_state() {
+        let state = initialize_annotation_state();
+
+        assert!(state.already_processed_coordinates.is_empty());
+        assert!(!state.last_event_spanned);
+        assert_eq!(state.order_scaler, 0);
+    }
+
+    #[test]
+    fn test_get_previous_coordinates() {
+        let event_graph = create_test_event_graph();
+
+        // Test for index 1 (should return coordinates from index 0)
+        let prev_coords = get_previous_coordinates(&event_graph, 1);
+        assert_eq!(prev_coords.len(), 1);
+        assert_eq!(prev_coords[0].start, 1000);
+
+        // Test for index 0 (should return empty vector)
+        let prev_coords = get_previous_coordinates(&event_graph, 0);
+        assert!(prev_coords.is_empty());
+    }
+
+    #[test]
+    fn test_coordinate_from_coverages() {
+        let mut coverages = BTreeMap::new();
+        coverages.insert(create_test_coordinate("chr1", 1000), 5);
+        coverages.insert(create_test_coordinate("chr1", 2000), 3);
+
+        let coord = coordinate_from_coverages(&coverages);
+        assert!(coord.is_some());
+        assert_eq!(coord.unwrap().start, 1000); // Should return first coordinate
+    }
+
+    #[test]
+    fn test_coordinate_from_coverages_empty() {
+        let coverages = BTreeMap::new();
+        let coord = coordinate_from_coverages(&coverages);
+        assert!(coord.is_none());
+    }
+
+    #[test]
+    fn test_is_alignment_in_bounds() {
+        let left_coord = create_test_coordinate("chr1", 1000);
+        let right_coord = create_test_coordinate("chr1", 2000);
+
+        // Alignment within bounds
+        let alignment = utils::create_test_alignment("chr1", 1500, 1600, "read1");
+        assert!(is_alignment_in_bounds(
+            &alignment,
+            &left_coord,
+            &right_coord
+        ));
+
+        // Alignment outside bounds (before left)
+        let alignment = utils::create_test_alignment("chr1", 500, 600, "read2");
+        assert!(!is_alignment_in_bounds(
+            &alignment,
+            &left_coord,
+            &right_coord
+        ));
+
+        // Alignment outside bounds (after right)
+        let alignment = utils::create_test_alignment("chr1", 2500, 2600, "read3");
+        assert!(!is_alignment_in_bounds(
+            &alignment,
+            &left_coord,
+            &right_coord
+        ));
+    }
+
+    #[test]
+    fn test_alignments_to_coverage() {
+        let start_coord = create_test_coordinate("chr1", 1000);
+        let end_coord = Some(create_test_coordinate("chr1", 2000));
+
+        let alignments = vec![
+            utils::create_test_alignment("chr1", 995, 1100, "read1"),
+            utils::create_test_alignment("chr1", 990, 1095, "read2"),
+            utils::create_test_alignment("chr1", 1995, 2100, "read3"),
+        ];
+
+        let coverage = alignments_to_coverage(&alignments, false, &start_coord, &end_coord);
+
+        assert!(!coverage.is_empty());
+        // Should have coverage at the alignment positions
+        assert!(coverage.contains_key(&create_test_coordinate("chr1", 995)));
+        assert!(coverage.contains_key(&create_test_coordinate("chr1", 990)));
+        assert!(coverage.contains_key(&create_test_coordinate("chr1", 1995)));
+    }
+
+    #[test]
+    fn test_alignments_to_coverage_empty() {
+        let start_coord = create_test_coordinate("chr1", 1000);
+        let end_coord = Some(create_test_coordinate("chr1", 2000));
+        let alignments = vec![];
+
+        let coverage = alignments_to_coverage(&alignments, false, &start_coord, &end_coord);
+        assert!(coverage.is_empty());
+    }
+
+    #[test]
+    fn test_has_known_orientation() {
+        let mut block =
+            ComplexSVBlock::new(create_test_coordinate("chr1", 1000), BTreeMap::new(), 0, "");
+
+        // Initially no orientation
+        assert!(!has_known_orientation(&block));
+
+        // Set orientation
+        block.orientation = Orientation::Forward;
+        assert!(has_known_orientation(&block));
+    }
+
+    #[test]
+    fn test_is_unspanned_block() {
+        let mut block = ComplexSVBlock::new(
+            create_test_coordinate("chr1", 1000),
+            BTreeMap::new(),
+            0,
+            "+",
+        );
+
+        // Initially unspanned (no coverages)
+        assert!(is_unspanned_block(&block));
+
+        // Add coverages
+        block.coverages.insert("chr1:1000-1100".to_string(), 5);
+        assert!(!is_unspanned_block(&block));
+    }
+
+    #[test]
+    fn test_can_continue_orientation_inference() {
+        let mut block =
+            ComplexSVBlock::new(create_test_coordinate("chr1", 1000), BTreeMap::new(), 0, "");
+
+        // Block without known orientation
+        assert!(!can_continue_orientation_inference(&block));
+
+        // Block with known orientation
+        block.orientation = Orientation::Forward;
+        assert!(can_continue_orientation_inference(&block));
+    }
+
+    #[test]
+    fn test_should_set_forward_orientation() {
+        let block = ComplexSVBlock::new(
+            create_test_coordinate("chr1", 1000),
+            BTreeMap::new(),
+            5,
+            "+",
+        );
+
+        // Should set forward orientation when sample order index equals last known
+        assert!(should_set_forward_orientation(&block, 5));
+
+        // Should not set forward orientation when sample order index is different
+        assert!(!should_set_forward_orientation(&block, 3));
+    }
+
+    #[test]
+    fn test_annotate_graphs_empty() {
+        let event_graphs = vec![];
+        let clip_coordinates = HashMap::new();
+
+        let result = annotate_graphs(&event_graphs, &clip_coordinates);
+        assert!(result.event_graphs.is_empty());
+    }
+
+    #[test]
+    fn test_annotate_graphs_single_event() {
+        let mut event_graphs = vec![];
+        let event_graph = EventGraph {
+            graph: create_test_event_graph(),
+        };
+        event_graphs.push(event_graph);
+
+        let clip_coordinates = create_test_clip_coordinates();
+
+        let result = annotate_graphs(&event_graphs, &clip_coordinates);
+        assert!(!result.event_graphs.is_empty());
+    }
+
+    #[test]
+    fn test_annotate_graphs_large_graph() {
+        let mut event_graphs = vec![];
+        let mut large_graph = HashMap::new();
+
+        // Create a graph larger than MAX_GRAPH_SIZE
+        for i in 0..MAX_GRAPH_SIZE + 10 {
+            large_graph.insert(
+                i as u32,
+                vec![create_test_coordinate("chr1", i as i64 * 1000)],
+            );
+        }
+
+        let event_graph = EventGraph { graph: large_graph };
+        event_graphs.push(event_graph);
+
+        let clip_coordinates = HashMap::new();
+
+        let result = annotate_graphs(&event_graphs, &clip_coordinates);
+        // Large graphs should be skipped
+        assert!(result.event_graphs.is_empty());
+    }
+
+    #[test]
+    fn test_annotate_graph() {
+        let event_graph = create_test_event_graph();
+        let clip_coordinates = create_test_clip_coordinates();
+
+        let result = annotate_graph(&event_graph, &clip_coordinates);
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn test_annotate_graph_empty() {
+        let event_graph = HashMap::new();
+        let clip_coordinates = HashMap::new();
+
+        let result = annotate_graph(&event_graph, &clip_coordinates);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_get_coordinate_alignments_as_coverages() {
+        let clip_coordinates = create_test_clip_coordinates();
+        let first_coord = create_test_coordinate("chr1", 1000);
+        let second_coord = Some(create_test_coordinate("chr1", 2000));
+
+        let coverages = get_coordinate_alignments_as_coverages(
+            &clip_coordinates,
+            &first_coord,
+            second_coord,
+            false,
+            true,
+            false,
+        );
+
+        // println!("DEBUG: coverages = {:?}", coverages);
+        assert!(!coverages.is_empty());
+    }
+
+    #[test]
+    fn test_get_first_coordinate_alignments() {
+        let clip_coordinates = create_test_clip_coordinates();
+        let first_coord = create_test_coordinate("chr1", 1000);
+
+        let alignments =
+            get_first_coordinate_alignments(&first_coord, &clip_coordinates, true, false, false);
+
+        assert!(!alignments.is_empty());
+    }
+
+    #[test]
+    fn test_get_second_break_alignments() {
+        let clip_coordinates = create_test_clip_coordinates();
+        let first_coord = create_test_coordinate("chr1", 1000);
+        let second_coord = create_test_coordinate("chr1", 2000);
+        let mut first_break_alignments =
+            vec![utils::create_test_alignment("chr1", 995, 1100, "read1")];
+
+        let alignments = get_second_break_alignments(
+            &first_coord,
+            &second_coord,
+            &mut first_break_alignments,
+            &clip_coordinates,
+            false,
+        );
+
+        // Should return alignments that match both coordinates
+        assert!(!alignments.is_empty());
+    }
+
+    #[test]
+    fn test_add_orientations() {
+        let mut blocks = vec![
+            ComplexSVBlock::new(
+                create_test_coordinate("chr1", 1000),
+                BTreeMap::new(),
+                0,
+                "+",
+            ),
+            ComplexSVBlock::new(
+                create_test_coordinate("chr1", 2000),
+                BTreeMap::new(),
+                1,
+                "+",
+            ),
+            ComplexSVBlock::new(
+                create_test_coordinate("chr1", 3000),
+                BTreeMap::new(),
+                2,
+                "+",
+            ),
+        ];
+
+        // Set some orientations
+        blocks[0].orientation = Orientation::Forward;
+        blocks[1].sample_order_index = 1;
+        blocks[2].sample_order_index = 2;
+
+        add_orientations(&mut blocks);
+
+        // Should have inferred orientations
+        assert!(blocks.iter().any(has_known_orientation));
+    }
+
+    #[test]
+    fn test_orientation_inference_context() {
+        let context = OrientationInferenceContext::new(false);
+        assert_eq!(context.forward, Orientation::Forward);
+        assert_eq!(context.reverse, Orientation::Reverse);
+
+        let context = OrientationInferenceContext::new(true);
+        assert_eq!(context.forward, Orientation::Reverse);
+        assert_eq!(context.reverse, Orientation::Forward);
+    }
+
+    #[test]
+    fn test_get_previous_blocks() {
+        let mut blocks = vec![
+            ComplexSVBlock::new(
+                create_test_coordinate("chr1", 1000),
+                BTreeMap::new(),
+                0,
+                "+",
+            ),
+            ComplexSVBlock::new(
+                create_test_coordinate("chr1", 2000),
+                BTreeMap::new(),
+                1,
+                "+",
+            ),
+            ComplexSVBlock::new(
+                create_test_coordinate("chr1", 3000),
+                BTreeMap::new(),
+                2,
+                "+",
+            ),
+        ];
+
+        let prev_blocks = get_previous_blocks(2, &mut blocks);
+        assert!(!prev_blocks.is_empty());
+    }
+
+    #[test]
+    fn test_already_added() {
+        let mut prev_ends = HashSet::new();
+        let block = ComplexSVBlock::new(
+            create_test_coordinate("chr1", 1000),
+            BTreeMap::new(),
+            0,
+            "+",
+        );
+        prev_ends.insert(block);
+
+        // Test with coordinate that is NOT within the block's end coordinate
+        let coord = create_test_coordinate("chr1", 2000);
+        assert!(!already_added(&prev_ends, &coord));
+
+        // Test with coordinate that IS within the block's end coordinate
+        let coord_within = create_test_coordinate("chr1", 1005);
+        assert!(already_added(&prev_ends, &coord_within));
+    }
+
+    #[test]
+    fn test_edge_cases() {
+        // Test with single coordinate
+        let mut event_graph = HashMap::new();
+        event_graph.insert(0, vec![create_test_coordinate("chr1", 1000)]);
+
+        let clip_coordinates = create_test_clip_coordinates();
+        let result = annotate_graph(&event_graph, &clip_coordinates);
+
+        // Should handle single coordinate case
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn test_coordinate_equality() {
+        let coord1 = create_test_coordinate("chr1", 1000);
+        let coord2 = create_test_coordinate("chr1", 1000);
+        let coord3 = create_test_coordinate("chr1", 2000);
+
+        assert_eq!(coord1, coord2);
+        assert_ne!(coord1, coord3);
+    }
+
+    #[test]
+    fn test_complex_sv_block_creation() {
+        let block = ComplexSVBlock::new(
+            create_test_coordinate("chr1", 1000),
+            BTreeMap::new(),
+            0,
+            "+",
+        );
+
+        assert!(block.coverages.is_empty());
+        assert!(has_known_orientation(&block));
+        assert_eq!(block.sample_order_index, 0);
+    }
+
+    #[test]
+    fn test_complex_sv_calls_creation() {
+        let blocks = vec![ComplexSVBlock::new(
+            create_test_coordinate("chr1", 1000),
+            BTreeMap::new(),
+            0,
+            "+",
+        )];
+        let event_graphs = vec![blocks];
+        let calls = ComplexSVCalls::new(event_graphs);
+
+        assert_eq!(calls.event_graphs.len(), 1);
+    }
 }

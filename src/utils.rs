@@ -79,8 +79,8 @@ pub fn is_gzipped(path: &String) -> bool {
     let file_handle = match std::fs::File::open(path) {
         Ok(file) => file,
         Err(e) => {
-            error!("File does not exist: \"{}\"", path);
-            error!("{}", e);
+            error!("File does not exist: \"{path}\"");
+            error!("{e}");
             std::process::exit(exitcode::IOERR);
         }
     };
@@ -99,7 +99,7 @@ pub fn read_file_from_path(file_path: &String) -> Vec<String> {
     let file: std::fs::File = match std::fs::File::open(path) {
         Ok(file) => file,
         Err(_) => {
-            error!("File not found {}", file_path);
+            error!("File not found {file_path}");
             std::process::exit(exitcode::IOERR);
         }
     };
@@ -109,7 +109,7 @@ pub fn read_file_from_path(file_path: &String) -> Vec<String> {
             let bgzf_reader = match rust_htslib::bgzf::Reader::from_path(file_path) {
                 Ok(r) => r,
                 Err(_) => {
-                    error!("Failed to read exclude regions file {}", file_path);
+                    error!("Failed to read exclude regions file {file_path}");
                     std::process::exit(exitcode::IOERR);
                 }
             };
@@ -124,8 +124,118 @@ pub fn read_file_from_path(file_path: &String) -> Vec<String> {
     match lines_result {
         Ok(l) => l,
         Err(_) => {
-            error!("Failed to read exclude regions file {}", file_path);
+            error!("Failed to read exclude regions file {file_path}");
             std::process::exit(exitcode::IOERR);
         }
+    }
+}
+
+#[cfg(test)]
+#[derive(Default)]
+pub struct TestAlignmentBuilder {
+    chrom: String,
+    pos: i64,
+    end: i64,
+    readname: String,
+    is_start_softclipped: bool,
+    is_end_softclipped: bool,
+    phaseset_tag: Option<i32>,
+    haplotype_tag: Option<i32>,
+}
+
+#[cfg(test)]
+impl TestAlignmentBuilder {
+    pub fn new(chrom: &str, pos: i64, end: i64, readname: &str) -> Self {
+        Self {
+            chrom: chrom.to_string(),
+            pos,
+            end,
+            readname: readname.to_string(),
+            is_start_softclipped: true,
+            is_end_softclipped: false,
+            phaseset_tag: None,
+            haplotype_tag: None,
+        }
+    }
+
+    pub fn build(self) -> crate::containers::FwdStrandSplitReadSegment {
+        let chrom = self.chrom;
+        crate::containers::FwdStrandSplitReadSegment {
+            fwd_read_start: 0,
+            fwd_read_end: 100,
+            chrom: chrom.clone(),
+            second_chrom: chrom,
+            pos: self.pos,
+            end: self.end,
+            is_fwd_strand: true,
+            is_start_softclipped: self.is_start_softclipped,
+            is_end_softclipped: self.is_end_softclipped,
+            phaseset_tag: self.phaseset_tag,
+            haplotype_tag: self.haplotype_tag,
+            spans: true,
+            from_primary_bam_record: true,
+            readname: self.readname,
+        }
+    }
+}
+
+#[cfg(test)]
+pub fn create_test_alignment(
+    chrom: &str,
+    pos: i64,
+    end: i64,
+    readname: &str,
+) -> crate::containers::FwdStrandSplitReadSegment {
+    TestAlignmentBuilder::new(chrom, pos, end, readname).build()
+}
+
+#[cfg(test)]
+pub fn create_test_alignment_with_clips(
+    chrom: &str,
+    pos: i64,
+    end: i64,
+    readname: &str,
+    is_start_softclipped: bool,
+    is_end_softclipped: bool,
+) -> crate::containers::FwdStrandSplitReadSegment {
+    create_test_alignment_with_phasing(
+        chrom,
+        pos,
+        end,
+        readname,
+        is_start_softclipped,
+        is_end_softclipped,
+        None,
+        None,
+    )
+}
+
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
+pub fn create_test_alignment_with_phasing(
+    chrom: &str,
+    pos: i64,
+    end: i64,
+    readname: &str,
+    is_start_softclipped: bool,
+    is_end_softclipped: bool,
+    phaseset_tag: Option<i32>,
+    haplotype_tag: Option<i32>,
+) -> crate::containers::FwdStrandSplitReadSegment {
+    crate::containers::FwdStrandSplitReadSegment {
+        fwd_read_start: 0,
+        fwd_read_end: 100,
+        chrom: chrom.to_string(),
+        second_chrom: chrom.to_string(),
+        pos,
+        end,
+        is_fwd_strand: true,
+        is_start_softclipped,
+        is_end_softclipped,
+        phaseset_tag,
+        haplotype_tag,
+        spans: true, // Default to true since it's almost always used
+        from_primary_bam_record: true,
+        readname: readname.to_string(),
     }
 }

@@ -78,12 +78,12 @@ def get_positions_in_window(region_info):
 
 def get_windows_by_chromosome(positions, max_size):
     """
-    Given positions in the event,
-    return all positions indexed by their chromosome
+    Given positions in the event, return dict of windows of at most max_size that
+    include all of the positions keyed by chrom
     """
     windows_by_chrom = {}
     for chrom in positions:
-        if chrom not in windows_by_chrom:
+        if chrom not in windows_by_chrom and len(positions[chrom]) > 0:
             windows_by_chrom[chrom] = []
         chrom_positions = sorted(list(set(positions[chrom])))
 
@@ -97,25 +97,25 @@ def get_windows_by_chromosome(positions, max_size):
             )
             continue
 
-        # Check if all positions can fit in a single window
-        total_span = chrom_positions[-1] - chrom_positions[0]
-        if total_span < max_size:
-            # All positions can fit in one window
-            windows_by_chrom[chrom].append(
-                Region(chrom, chrom_positions[0], chrom_positions[-1], total_span)
-            )
-            continue
-
-        # Create windows between consecutive positions
-        for i in range(len(chrom_positions) - 1):
-            start_pos = chrom_positions[i]
-            end_pos = chrom_positions[i + 1]
-
-            # Create a window between these positions
-            windows_by_chrom[chrom].append(
-                Region(chrom, start_pos, end_pos, end_pos - start_pos)
-            )
-
+        window_start_idx = 0
+        for i, end_pos in enumerate(chrom_positions):
+            start_pos = chrom_positions[window_start_idx]
+            window_size = end_pos - start_pos
+            if window_size >= max_size:
+                prev_end_pos = (
+                    chrom_positions[i - 1]
+                    if i > window_start_idx
+                    else start_pos + SPLIT_REGION_PADDING
+                )
+                window_size = prev_end_pos - start_pos
+                windows_by_chrom[chrom].append(
+                    Region(chrom, start_pos, prev_end_pos, window_size)
+                )
+                window_start_idx = i
+        start_pos = chrom_positions[window_start_idx]
+        end_pos = chrom_positions[-1]
+        window_size = end_pos - start_pos
+        windows_by_chrom[chrom].append(Region(chrom, start_pos, end_pos, window_size))
     return windows_by_chrom
 
 
@@ -147,8 +147,9 @@ def get_windows(windows_by_chrom, positions):
             last_window.end + SPLIT_REGION_PADDING,
             (last_window.end + SPLIT_REGION_PADDING) - last_window.start,
         )
-    elif len(windows) == 0:
+    elif len(windows) == 0 and positions:
         # Get the first chromosome's positions and convert to integers
+        chrom = list(positions.keys())[0]  # Get the first chromosome
         chrom_positions = [int(pos) for pos in positions[chrom]]
         start = min(chrom_positions)
         end = max(chrom_positions)
@@ -178,7 +179,8 @@ def create_complex_sv_image(event_info, gene_records, bed_records, max_window_si
     windows = choose_window_coordinates(event_info, max_window_size)
     if windows is None:
         return []
-    plot_height = len(event_info) + 2
+    annotation_region_height = len(bed_records) / 1.5
+    plot_height = len(event_info) + 2 + annotation_region_height
     chain_height = min(3, int(plot_height / 2))
 
     fig = plt.figure(figsize=(IMAGE_WIDTH, IMAGE_HEIGHT))
@@ -206,10 +208,30 @@ def create_complex_sv_image(event_info, gene_records, bed_records, max_window_si
             window,
             len(event_info),
             len(windows),
+            annotation_region_height,
             ax,
         )
-        annotate(gene_records, window, axis_dict[BREAKS][-1], 0)
-        annotate(bed_records, window, axis_dict[BREAKS][-1], 1)
+        annotation_level = 0
+        for gene_filename in gene_records:
+            annotate(
+                gene_filename,
+                gene_records[gene_filename],
+                window,
+                axis_dict[BREAKS][-1],
+                annotation_level,
+                i,
+            )
+            annotation_level += 1
+        for bed_record_group in bed_records:
+            annotate(
+                bed_record_group,
+                bed_records[bed_record_group],
+                window,
+                axis_dict[BREAKS][-1],
+                annotation_level,
+                i,
+            )
+            annotation_level += 1
         box = [x for x in ax.spines.values()]
         if i > 0:
             box[0].set_linewidth(0.1)  # interior right spline
@@ -336,18 +358,27 @@ def make_plot(plot_args: MakePlotArgs):
         plot_args.event_info,
         plot_args.gene_annotation_records,
         plot_args.bed_records,
-        plot_args.max_gap_size_mb * MEGABASE,
+        plot_args.max_gap_size_mb,
     )
     plt.suptitle(plot_args.prefix)
     if figname_splits:
         figname = os.path.join(
             plot_args.svtopo_dir,
+            "images",
             "{}_{}.{}".format(
                 plot_args.prefix,
                 get_image_name(plot_args.event_info),
                 plot_args.image_type,
             ),
         )
+
+        plt.subplots_adjust(
+            left=0.01,  # Reduce left margin (default is ~0.125)
+            bottom=0.0,  # Reduce bottom margin (default is ~0.11)
+            right=0.9,  # Keep right margin for legend space
+            top=0.9,  # Keep top margin for title space
+        )
+
         plt.savefig(figname, dpi=400)
         logger.debug("Saved image {}".format(figname))
         plt.close()
@@ -365,6 +396,7 @@ def make_plots(
     """
     Generates all plots, with their annotations
     """
+    os.makedirs(os.path.join(svtopo_dir, "images"), exist_ok=True)
     make_plot_args = []
     for json in jsons:
         unpacked = unpack_json(json)
@@ -393,7 +425,7 @@ def svtopovz(args):
     jsons = glob(os.path.join(args.svtopo_dir, "*json"))
     jsons.extend(glob(os.path.join(args.svtopo_dir, "*json.gz")))
     gene_annotation_records = unpack_annotation_records(args.genes)
-    bed_records = unpack_annotation_records(args.bed)
+    bed_records = unpack_annotation_records(args.annotation_bed)
 
     make_plots(
         jsons,

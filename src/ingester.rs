@@ -8,12 +8,15 @@ use std::cmp::max;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io::BufReader;
+use std::path::Path;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
 use crate::bam_sa_parser::get_fwd_read_split_segments;
 use crate::containers::TargetCoordinate;
-use crate::containers::{Connection, Coordinate, ExcludeRegions, FwdStrandSplitReadSegment};
+use crate::containers::{
+    Connection, Coordinate, ExcludeRegions, FwdStrandSplitReadSegment, VcfProcessingResult,
+};
 use crate::utils;
 use crate::utils::is_gzipped;
 use crate::utils::is_local_file;
@@ -25,7 +28,7 @@ use crate::utils::is_local_file;
 pub fn get_sample_from_bam(bam_filename: PathBuf) -> String {
     let bam_name_str = bam_filename.as_os_str().to_str().unwrap();
     let bam_reader: bam::Reader = bam::Reader::from_path(&bam_filename).unwrap_or_else(|_error| {
-        error!("Input BAM does not exist: \"{}\"", bam_name_str);
+        error!("Input BAM does not exist: \"{bam_name_str}\"");
         std::process::exit(exitcode::NOINPUT);
     });
 
@@ -44,7 +47,7 @@ pub fn get_sample_from_bam(bam_filename: PathBuf) -> String {
         }
     }
 
-    error!("Input BAM {} missing sample name (SM tag)", bam_name_str);
+    error!("Input BAM {bam_name_str} missing sample name (SM tag)");
     std::process::exit(exitcode::DATAERR);
 }
 
@@ -56,7 +59,7 @@ pub fn get_split_alignments_from_region(
     let bam_name_str = bam_filename.as_os_str().to_str().unwrap();
     let mut bam_reader: bam::IndexedReader = bam::IndexedReader::from_path(&bam_filename)
         .unwrap_or_else(|_error| {
-            error!("Input BAM does not exist: \"{}\"", bam_name_str);
+            error!("Input BAM does not exist: \"{bam_name_str}\"");
             std::process::exit(exitcode::NOINPUT);
         });
 
@@ -91,7 +94,7 @@ pub fn get_split_alignments_from_region(
                 }
             }
             Err(_) => {
-                error!("Error parsing BAM: {}", bam_name_str);
+                error!("Error parsing BAM: {bam_name_str}");
                 std::process::exit(exitcode::IOERR);
             }
         }
@@ -102,7 +105,7 @@ pub fn get_split_alignments_from_region(
     );
     debug!("{} clipped reads", alignment_map.len());
     let alignment_count: usize = alignment_map.values().map(|s| s.len()).sum();
-    debug!("{} total chimeric alignments", alignment_count);
+    debug!("{alignment_count} total chimeric alignments");
     alignment_map
 }
 
@@ -118,7 +121,7 @@ pub fn get_split_alignments(
     let bam_name_str = bam_filename.as_os_str().to_str().unwrap();
     let mut bam_reader: bam::Reader =
         bam::Reader::from_path(&bam_filename).unwrap_or_else(|_error| {
-            error!("Input BAM does not exist: \"{}\"", bam_name_str);
+            error!("Input BAM does not exist: \"{bam_name_str}\"");
             std::process::exit(exitcode::NOINPUT);
         });
 
@@ -147,7 +150,7 @@ pub fn get_split_alignments(
                 }
             }
             Err(_) => {
-                error!("Error parsing BAM: {}", bam_name_str);
+                error!("Error parsing BAM: {bam_name_str}");
                 std::process::exit(exitcode::IOERR);
             }
         }
@@ -158,7 +161,7 @@ pub fn get_split_alignments(
     );
     debug!("{} clipped reads", alignment_map.len());
     let alignment_count: usize = alignment_map.values().map(|s| s.len()).sum();
-    debug!("{} total chimeric alignments", alignment_count);
+    debug!("{alignment_count} total chimeric alignments");
     alignment_map
 }
 
@@ -175,7 +178,7 @@ fn get_chrom_from_bam(bam_reader: &bam::Reader, record: &bam::Record) -> String 
     if chrom.get(0..3) == Some("chr") {
         chrom
     } else {
-        format!("chr{}", chrom)
+        format!("chr{chrom}")
     }
 }
 
@@ -192,100 +195,156 @@ pub fn get_vcf_breaks(
     exclude_regions: &ExcludeRegions,
     target_region_opt: &Option<TargetCoordinate>,
 ) -> (Vec<Connection>, HashMap<String, Vec<Coordinate>>) {
-    let mut coordinate_map: HashMap<String, Vec<Coordinate>> = HashMap::new();
-    let mut vcf_breaks = Vec::new();
+    if should_skip_vcf_processing(&vcf_filename) {
+        return (Vec::new(), HashMap::new());
+    }
+
+    let (mut bcf_reader, header) = open_vcf_reader(&vcf_filename);
+    let mut result =
+        process_vcf_records(&mut bcf_reader, &header, exclude_regions, target_region_opt);
+
+    finalize_vcf_processing(&mut result, &header);
+
+    (result.vcf_breaks, result.coordinate_map)
+}
+
+/// Checks if VCF processing should be skipped based on filename
+fn should_skip_vcf_processing(vcf_filename: &Path) -> bool {
     let vcf_name_str = vcf_filename.as_os_str().to_str().unwrap();
-    if vcf_name_str == "\"\"" {
-        return (vcf_breaks, coordinate_map);
-    } else if !vcf_filename.exists() {
-        error!("Error reading VCF {}: file does not exist", vcf_name_str);
+    vcf_name_str == "\"\""
+}
+
+/// Opens VCF file and creates BCF reader with error handling
+fn open_vcf_reader(vcf_filename: &PathBuf) -> (bcf::Reader, bcf::header::HeaderView) {
+    let vcf_name_str = vcf_filename.as_os_str().to_str().unwrap();
+
+    if !vcf_filename.exists() {
+        error!("Error reading VCF {vcf_name_str}: file does not exist");
         std::process::exit(exitcode::IOERR);
     }
-    let mut bnd_records: HashMap<String, bcf::Record> = HashMap::new();
-    let mut bcf = match bcf::Reader::from_path(&vcf_filename) {
+
+    let bcf_reader = match bcf::Reader::from_path(vcf_filename) {
         Ok(bcf) => bcf,
         Err(e) => {
-            error!("Error reading {}: {}", vcf_name_str, e);
+            error!("Error reading {vcf_name_str}: {e}");
             std::process::exit(exitcode::IOERR);
         }
     };
-    let header: bcf::header::HeaderView = bcf::Read::header(&bcf).clone();
 
-    // Iterate through each row of the vcf body. Create Connection entries for each variant call,
-    // connecting the start to the end.
-    for record_result in bcf::Read::records(&mut bcf) {
-        let record: bcf::Record = record_result.expect("Fail to read record");
-        let record_id = match String::from_utf8(record.id()) {
-            Ok(id) => id,
-            Err(e) => {
-                error!("{}", e);
-                std::process::exit(exitcode::IOERR);
-            }
-        };
+    let header = bcf::Read::header(&bcf_reader).clone();
+    (bcf_reader, header)
+}
 
-        let chrom = get_vcf_record_chrom(&record, &header);
-        let start = record.pos();
-        let end = record.end();
-        if utils::entry_excluded(
-            exclude_regions,
-            (chrom.clone(), start, end),
-            target_region_opt,
-        ) {
+/// Processes all VCF records and populates the result structure
+fn process_vcf_records(
+    bcf_reader: &mut bcf::Reader,
+    header: &bcf::header::HeaderView,
+    exclude_regions: &ExcludeRegions,
+    target_region_opt: &Option<TargetCoordinate>,
+) -> VcfProcessingResult {
+    let mut result = VcfProcessingResult::new();
+
+    for record_result in bcf::Read::records(bcf_reader) {
+        let record = record_result.expect("Fail to read record");
+        let record_id = extract_record_id(&record);
+
+        if should_skip_record(&record, header, exclude_regions, target_region_opt) {
             continue;
         }
 
-        let svtype = match get_optional_string_info(&record, "SVTYPE") {
-            Some(svtype) => svtype,
-            None => String::new(),
-        };
+        let svtype = get_optional_string_info(&record, "SVTYPE").unwrap_or_default();
 
-        // BND variants connect to each other rather than having a start and end connected in the same record.
-        // This requires special treatment.
         if svtype == "BND" {
-            bnd_records.insert(record_id.clone(), record.clone());
-            continue;
+            result.bnd_records.insert(record_id, record);
+        } else if svtype != "INS" {
+            process_standard_variant(&record, &record_id, header, &mut result);
         }
-        // novel insertions are not supported
-        if svtype == "INS" {
-            continue;
+    }
+
+    result
+}
+
+/// Extracts record ID from VCF record with error handling
+fn extract_record_id(record: &bcf::Record) -> String {
+    match String::from_utf8(record.id()) {
+        Ok(id) => id,
+        Err(e) => {
+            error!("{e}");
+            std::process::exit(exitcode::IOERR);
         }
+    }
+}
 
-        let (pos_confidence_interval, end_confidence_interval) = get_confidence_intervals(&record);
-        let first_coord =
-            Coordinate::new_with_confidence_interval(chrom.clone(), start, pos_confidence_interval);
-        let second_coord =
-            Coordinate::new_with_confidence_interval(chrom.clone(), end, end_confidence_interval);
-        let dist = first_coord.start - second_coord.start;
+/// Determines if a record should be skipped based on exclusion criteria
+fn should_skip_record(
+    record: &bcf::Record,
+    header: &bcf::header::HeaderView,
+    exclude_regions: &ExcludeRegions,
+    target_region_opt: &Option<TargetCoordinate>,
+) -> bool {
+    let chrom = get_vcf_record_chrom(record, header);
+    let start = record.pos();
+    let end = record.end();
 
-        //maps variant ID to a list of the genomic positions associated with it
-        coordinate_map
-            .entry(record_id.clone())
-            .or_default()
-            .push(first_coord.clone());
+    utils::entry_excluded(exclude_regions, (chrom, start, end), target_region_opt)
+}
 
-        if dist.abs() <= 1 {
-            continue;
-        }
-        coordinate_map
-            .entry(record_id)
+/// Processes standard (non-BND) variants and adds them to the result
+fn process_standard_variant(
+    record: &bcf::Record,
+    record_id: &str,
+    header: &bcf::header::HeaderView,
+    result: &mut VcfProcessingResult,
+) {
+    let chrom = get_vcf_record_chrom(record, header);
+    let start = record.pos();
+    let end = record.end();
+
+    let (pos_confidence_interval, end_confidence_interval) = get_confidence_intervals(record);
+    let first_coord =
+        Coordinate::new_with_confidence_interval(chrom.clone(), start, pos_confidence_interval);
+    let second_coord =
+        Coordinate::new_with_confidence_interval(chrom, end, end_confidence_interval);
+
+    // Add first coordinate to mapping
+    result
+        .coordinate_map
+        .entry(record_id.to_string())
+        .or_default()
+        .push(first_coord.clone());
+
+    let dist = first_coord.start - second_coord.start;
+    if dist.abs() > 1 {
+        result
+            .coordinate_map
+            .entry(record_id.to_string())
             .or_default()
             .push(second_coord.clone());
 
         let connection = Connection::new(first_coord, second_coord, false, true);
-        vcf_breaks.push(connection);
+        result.vcf_breaks.push(connection);
     }
+}
 
-    add_bnd_connections(&mut vcf_breaks, &mut coordinate_map, bnd_records, &header);
-    for (_, coords) in coordinate_map.iter_mut() {
+/// Finalizes VCF processing by handling BND records and cleaning up coordinate map
+fn finalize_vcf_processing(result: &mut VcfProcessingResult, header: &bcf::header::HeaderView) {
+    add_bnd_connections(
+        &mut result.vcf_breaks,
+        &mut result.coordinate_map,
+        std::mem::take(&mut result.bnd_records),
+        header,
+    );
+
+    // Clean up coordinate map
+    for (_, coords) in result.coordinate_map.iter_mut() {
         coords.sort();
         coords.dedup();
     }
+
     debug!(
         "{} unique variant coordinates found in VCF",
-        vcf_breaks.len()
+        result.vcf_breaks.len()
     );
-
-    (vcf_breaks, coordinate_map)
 }
 
 /// Add the record that are BNDs in the vcf,
@@ -351,12 +410,11 @@ fn get_vcf_record_chrom(
             if has_prefix {
                 return raw_chrom;
             } else {
-                return format!("chr{}", raw_chrom);
+                return format!("chr{raw_chrom}");
             }
         }
         error!(
-            "Error reading VCF: Chromosome {} missing from header",
-            ref_id
+            "Error reading VCF: Chromosome {ref_id} missing from header"
         );
         std::process::exit(exitcode::IOERR);
     }
@@ -431,8 +489,8 @@ pub fn get_read_info_from_json(
     let file_handle = match std::fs::File::open(&json_path) {
         Ok(file) => file,
         Err(e) => {
-            error!("Input JSON does not exist: \"{}\"", json_name_str);
-            error!("{}", e);
+            error!("Input JSON does not exist: \"{json_name_str}\"");
+            error!("{e}");
             std::process::exit(exitcode::IOERR);
         }
     };
@@ -450,8 +508,8 @@ pub fn get_read_info_from_json(
     let json_data: HashMap<String, HashMap<String, Vec<String>>> = match json_data_result {
         Ok(json_data) => json_data,
         Err(e) => {
-            error!("Error reading JSON file \"{}\"", json_name_str);
-            error!("{}", e);
+            error!("Error reading JSON file \"{json_name_str}\"");
+            error!("{e}");
             std::process::exit(exitcode::IOERR);
         }
     };
@@ -465,8 +523,7 @@ pub fn get_read_info_from_json(
     }
     if sample_variant_readnames.is_empty() {
         error!(
-            "No variant data found for sample \"{}\" in \"{}\"",
-            sample_id, json_name_str
+            "No variant data found for sample \"{sample_id}\" in \"{json_name_str}\""
         );
         std::process::exit(exitcode::DATAERR);
     }
@@ -514,8 +571,7 @@ pub fn load_exclude_regions(exclude_regions_path: String) -> ExcludeRegions {
         utils::read_file_from_path(&exclude_regions_path)
     } else {
         error!(
-            "Failed to read exclude regions file {}",
-            exclude_regions_path
+            "Failed to read exclude regions file {exclude_regions_path}"
         );
         std::process::exit(exitcode::IOERR);
     };

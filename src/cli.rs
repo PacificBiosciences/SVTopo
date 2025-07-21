@@ -28,7 +28,6 @@ pub struct Arguments {
     pub prefix: String,
 
     /// (Recommended) structual variant VCF filename.
-    /// Requires `--variant-readnames`
     #[clap(required = false)]
     #[clap(long = "vcf")]
     #[clap(value_name = "VCF")]

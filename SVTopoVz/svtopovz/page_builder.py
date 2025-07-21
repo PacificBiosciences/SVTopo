@@ -8,14 +8,10 @@ Note: additional arguments are passed through to samplot plot
 """
 from __future__ import print_function
 
-import argparse
-from collections import Counter
 import gzip
 import logging
-import operator
 import os
 import sys
-import re
 from glob import glob
 from .__init__ import __version__
 
@@ -68,11 +64,15 @@ def write_site(table_data, unique_table_data, out_dir, output_type):
             logger.error(f"Template directory contents: {os.listdir(template_dir)}")
         raise
 
-    # Copy logo images to output directory
-    for img_name in ["svtopo.png", "github-mark-white.png"]:
-        src = os.path.join(template_dir, img_name)
-        dst = os.path.join(out_dir, img_name)
-        if os.path.exists(src):
+    # Copy static artifacts to output directory
+    for artifact_name in ["svtopo.png", "github-mark-white.png", "js/", "stylesheets/"]:
+        src = os.path.join(template_dir, "static", artifact_name)
+        dst = os.path.join(out_dir, artifact_name)
+        if os.path.isdir(src):
+            if os.path.isdir(dst):
+                shutil.rmtree(dst)
+            shutil.copytree(src, dst)
+        else:
             shutil.copy2(src, dst)
 
     # write index.html
@@ -141,7 +141,9 @@ def read_beds(svtopo_dir, image_type):
                     continue
                 variant_ids = list(set(fields[4].split(","))) if len(fields) > 4 else []
                 image_path = os.path.join(
-                    svtopo_dir, "{}_{}.{}".format(bed_prefix, image_name, image_type)
+                    svtopo_dir,
+                    "images",
+                    "{}_{}.{}".format(bed_prefix, image_name, image_type),
                 )
                 if not os.path.isfile(image_path):
                     continue
@@ -207,8 +209,8 @@ def build_review_page(args):
     """
     table_data, unique_table_data = generate_table(args.svtopo_dir, args.image_type)
     write_site(table_data, unique_table_data, args.svtopo_dir, args.image_type)
-    logger.debug(
+    logger.info(
         "Open {}/index.html in your browser to see SVTopo Viewer".format(
-            args.svtopo_dir
+            args.svtopo_dir.rstrip("/")
         )
     )

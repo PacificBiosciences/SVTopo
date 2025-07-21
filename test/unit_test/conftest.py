@@ -1,5 +1,9 @@
 import pytest
 from collections import namedtuple
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="pkg_resources")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="mpl_toolkits")
+warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib.projections")
 
 @pytest.fixture
 def sample_event_info():

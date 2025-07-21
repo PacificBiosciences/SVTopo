@@ -4,16 +4,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import logging
 
-from svtopovz.utils import SMALL_FONTSIZE, BedRecord
+from svtopovz.utils import FONTSIZE, SMALL_FONTSIZE, SPLIT_REGION_PADDING, BedRecord
 
 logger = logging.getLogger(__name__)
 
 
-def annotate(annotation_records, region, ax, level=0):
+def annotate(annotation_name, annotation_records, region, ax, level, window_idx):
     """
     Add annotations to the plot for this region
     """
-    assert level in [0, 1]
     region_length = region.end - region.start
     if region_length == 0:
         return
@@ -21,13 +20,9 @@ def annotate(annotation_records, region, ax, level=0):
     if annotation_records is None:
         return
     region_bed_records = get_region_bed_records(annotation_records, region)
-    if level == 0:
-        annotation_top = 0.3
-        annotation_bottom = 0.1
-    elif level == 1:
-        annotation_top = 1
-        annotation_bottom = 0.8
 
+    annotation_top = 0.5 + (level * 0.7)
+    annotation_bottom = 0.3 + (level * 0.7)
     arrows_per_window = 100
 
     title_coords = []
@@ -53,6 +48,15 @@ def annotate(annotation_records, region, ax, level=0):
             annotation_bottom,
             title_coords,
             ax,
+        )
+    if window_idx == 0:
+        ax.text(
+            region.start,
+            annotation_top,
+            annotation_name,
+            fontsize=SMALL_FONTSIZE,
+            ha="left",
+            va="bottom",
         )
 
 

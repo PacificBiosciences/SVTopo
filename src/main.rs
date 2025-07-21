@@ -1,24 +1,21 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::time::SystemTime;
+use std::{collections::HashMap, path::PathBuf};
 
-use crate::containers::FwdStrandSplitReadSegment;
-use cli::{get_args, Arguments};
-use containers::{ComplexSVCalls, Connection, Coordinate, TargetCoordinate};
 use log::{debug, error, info, LevelFilter};
 use std::env;
-use utils::is_local_file;
-
-mod bam_sa_parser;
-mod block_filter;
-mod cli;
-pub mod cluster_connector;
-pub mod cluster_finder;
-mod containers;
-pub mod event_graph_builder;
-mod graph_annotator;
-mod ingester;
-pub mod result_writer;
-mod utils;
+use svtopo::cli::{get_args, Arguments};
+use svtopo::cluster_connector::connect_clusters;
+use svtopo::containers::{ComplexSVCalls, Connection, Coordinate, EventGraph, TargetCoordinate};
+use svtopo::containers::{ExcludeRegions, FwdStrandSplitReadSegment};
+use svtopo::event_graph_builder::build_event_graphs;
+use svtopo::graph_annotator::annotate_graphs;
+use svtopo::ingester::{
+    get_read_info_from_json, get_sample_from_bam, get_split_alignments,
+    get_split_alignments_from_region, get_vcf_breaks, load_exclude_regions,
+};
+use svtopo::utils::is_local_file;
+use svtopo::{block_filter, cluster_finder, cluster_support_builder, result_writer};
 
 fn set_up() -> (Arguments, Option<TargetCoordinate>) {
     let args = get_args();
@@ -32,12 +29,12 @@ fn set_up() -> (Arguments, Option<TargetCoordinate>) {
         .init();
 
     let version = env!("CARGO_PKG_VERSION");
-    info!("\nRunning HiFi-SVTopo v{}\n", version);
+    info!("\nRunning HiFi-SVTopo v{version}\n");
 
     let cmd: Vec<String> = env::args().collect();
     let cmd_str = cmd.join(" ");
-    debug!("Run command: {}", cmd_str);
-    debug!("v{}\n", version);
+    debug!("Run command: {cmd_str}");
+    debug!("v{version}\n");
 
     let mut has_vcf = false;
     let mut has_json = false;
@@ -49,10 +46,6 @@ fn set_up() -> (Arguments, Option<TargetCoordinate>) {
     }
     if has_json && !has_vcf {
         error!("`--variant-readnames` json input requires `--vcf` input");
-        std::process::exit(exitcode::CONFIG);
-    }
-    if !has_json && has_vcf {
-        error!("`--vcf` input requires `--variant-readnames` json input");
         std::process::exit(exitcode::CONFIG);
     }
 
@@ -87,7 +80,51 @@ fn log_time(start_time: SystemTime) {
     let hours = elapsed_time / 3600;
     let minutes = (elapsed_time % 3600) / 60;
     let seconds = elapsed_time % 60;
-    debug!("Running time: {}h:{}m:{}s", hours, minutes, seconds);
+    debug!("Running time: {hours}h:{minutes}m:{seconds}s");
+}
+
+/// Uses the clipped reads and vcf + json data if available to identify the coordinates of genomic
+/// breakend locations, plus any connections between them that can be found via VCF.
+fn identify_breakends_from_inputs(
+    vcf_filename_opt: Option<PathBuf>,
+    json_filename_opt: Option<PathBuf>,
+    sample_id: String,
+    exclude_regions: ExcludeRegions,
+    target_opt: &Option<TargetCoordinate>,
+    clipped_reads: HashMap<String, Vec<FwdStrandSplitReadSegment>>,
+    allow_unphased: bool,
+) -> (
+    HashMap<Coordinate, HashSet<FwdStrandSplitReadSegment>>,
+    Vec<Connection>,
+) {
+    let vcf_coord_map: HashMap<String, Vec<Coordinate>>;
+    let clip_coordinates: HashMap<Coordinate, HashSet<FwdStrandSplitReadSegment>>;
+    let mut vcf_connections: Vec<Connection> = Vec::new();
+
+    if let Some(vcf_filename) = vcf_filename_opt {
+        (vcf_connections, vcf_coord_map) =
+            get_vcf_breaks(vcf_filename, &exclude_regions, target_opt);
+        let variant_ids: std::collections::HashSet<String> =
+            vcf_coord_map.keys().cloned().collect();
+        let mut variant_readnames_opt: Option<HashMap<String, Vec<String>>> = None;
+        if let Some(json_filename) = json_filename_opt {
+            variant_readnames_opt = Some(get_read_info_from_json(
+                json_filename,
+                sample_id,
+                variant_ids,
+            ));
+        }
+        clip_coordinates = cluster_support_builder::assign_clipped_reads_to_clusters(
+            &clipped_reads,
+            &vcf_coord_map,
+            &variant_readnames_opt,
+        );
+    } else {
+        // Find genomic break locations using clustered groups of clipped reads
+        clip_coordinates = cluster_finder::find_breaks(&clipped_reads, allow_unphased);
+    };
+
+    (clip_coordinates, vcf_connections)
 }
 
 fn main() {
@@ -95,65 +132,40 @@ fn main() {
     // Set up
     let (args, target_opt) = set_up();
     let start_time = SystemTime::now();
-    let mut exclude_regions = ingester::load_exclude_regions(args.exclude_regions_path);
-    let vcf_coord_map: HashMap<String, Vec<Coordinate>>;
+    let mut exclude_regions: ExcludeRegions = load_exclude_regions(args.exclude_regions_path);
 
     ///////////////////////////////////////////////////////////////////////////
     // Get read data
     let clipped_reads: HashMap<String, Vec<FwdStrandSplitReadSegment>>;
     if let Some(target_coord) = target_opt.clone() {
-        clipped_reads =
-            ingester::get_split_alignments_from_region(args.bam_filename.clone(), target_coord);
+        clipped_reads = get_split_alignments_from_region(args.bam_filename.clone(), target_coord);
     } else {
-        clipped_reads =
-            ingester::get_split_alignments(args.bam_filename.clone(), &mut exclude_regions);
+        clipped_reads = get_split_alignments(args.bam_filename.clone(), &mut exclude_regions);
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Get variant ID maps to readnames and vcf breakpoints as connections
-    // if available.
-    let (clip_coordinates, vcf_connections) = if let (Some(vcf_filename), Some(json_filename)) =
-        (args.vcf_filename, args.json_filename)
-    {
-        let sample_id: String = ingester::get_sample_from_bam(args.bam_filename.clone());
+    let sample_id: String = get_sample_from_bam(args.bam_filename.clone());
 
-        let vcf_breaks: (Vec<Connection>, HashMap<String, Vec<Coordinate>>) =
-            ingester::get_vcf_breaks(vcf_filename, &exclude_regions, &target_opt);
-        let variant_ids: std::collections::HashSet<String> = vcf_breaks.1.keys().cloned().collect();
-        let variant_readnames: HashMap<String, Vec<String>> =
-            ingester::get_read_info_from_json(json_filename, sample_id, variant_ids);
-        vcf_coord_map = vcf_breaks.1;
-
-        // Find genomic break locations using VCF break locations if provided,
-        (
-            cluster_finder::assign_clipped_reads_to_clusters(
-                &clipped_reads,
-                &vcf_coord_map,
-                &variant_readnames,
-            ),
-            vcf_breaks.0,
-        )
-    } else {
-        // Find genomic break locations using clustered groups of clipped reads
-        (
-            cluster_finder::find_breaks(&clipped_reads, args.allow_unphased),
-            Vec::new(),
-        )
-    };
+    let (clip_coordinates, vcf_connections) = identify_breakends_from_inputs(
+        args.vcf_filename,
+        args.json_filename,
+        sample_id,
+        exclude_regions,
+        &target_opt,
+        clipped_reads,
+        args.allow_unphased,
+    );
 
     // Connect genomic break locations using connections from the VCF, alignments, & phasing
     let break_connections: HashMap<Connection, Vec<FwdStrandSplitReadSegment>> =
-        cluster_connector::connect_clusters(&clip_coordinates, &vcf_connections, args.allow_unphased);
+        connect_clusters(&clip_coordinates, &vcf_connections, args.allow_unphased);
 
     ///////////////////////////////////////////////////////////////////////////
     // Join 1-to-1 connections into full connected event graphs
-    let event_graphs: Vec<containers::EventGraph> =
-        event_graph_builder::build_event_graphs(&break_connections, &clip_coordinates);
+    let event_graphs: Vec<EventGraph> = build_event_graphs(&break_connections, &clip_coordinates);
 
     ///////////////////////////////////////////////////////////////////////////
     //Annotate event graphs with ordering info and directionality
-    let annotated_graphs: ComplexSVCalls =
-        graph_annotator::annotate_graphs(&event_graphs, &clip_coordinates);
+    let annotated_graphs: ComplexSVCalls = annotate_graphs(&event_graphs, &clip_coordinates);
 
     // Filter/write results
     ///////////////////////////////////////////////////////////////////////////

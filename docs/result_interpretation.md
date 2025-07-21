@@ -6,6 +6,7 @@
 * _Spanned blocks_ are blocks where reads are aligned to the reference genome. These blocks are each softclipped at one or both ends. The thickness/weight of the lines for the spanned blocks indicates the number of clipped alignments in each position. Spanned blocks are horizontal groups of dark lines inside a black box. The block weights are not intended to represent the exact number of alignments present, but to give an overview of relative chimeric alignment support across the block.
 * _Unspanned blocks_ are dashed lines connecting the end of a spanned block to the end of the next spanned block, with order determined by chimeric alignment order from the originating long read.
 * _Alternate chain plots_, one or two chained plots of genomic blocks in sample order, representing possible alternate haplotype structures and shown in context of a second copy of the reference genome structure chain plot. Arrowhead directions indicate alignment orientation relative to the reference genome. Missing blocks represent deletions and repeated blocks indicate duplications. Blocks size is not maintained between this plot and the reference chain plot at the top.
+* _Annotation tracks_, visual tracks at the bottom of the window with spanned and unspanned blocks that indicate locations of genes or other genomic freatures relevant to the SV. Multiple BED-format annotation tracks may be shown, and optionally a single gene track (in GTF or GFF3 format) may be added. These may include arrows (`<` or `>`) to show strand/direction of the annotation, and a label plotted below the track.
 
 ## Gallery of examples
 * [Complex SV example](#complex-sv)
@@ -21,7 +22,8 @@
 * [Incompletely resolved multi-region event](#incompletely-resolved-multi-region-event)
 
 ### Complex SV:
-![system of deletions and inversions_example](imgs/complex_fully_connected.png)
+![system of deletions and inversions_example](imgs/complex_fully_connected.svg)
+
 This image is a representation of a complex SV consisting of genomic blocks A-J, where:
 * A, C, and J are unchanged
 * E and G are inverted
@@ -37,7 +39,8 @@ IGV of the same region for comparison, with supplementary alignments linked:
 
 ### Deletion-deletion
 
-![adjacent_dels](imgs/del-del.png)
+![adjacent_dels](imgs/del-del.svg)
+
 This example contains two deletions B and D, separated by a small (80 bp) conserved region C.
 
 IGV of the same region for comparison, with supplementary alignments linked:
@@ -47,7 +50,8 @@ IGV of the same region for comparison, with supplementary alignments linked:
 
 
 ### Deletion-inversion-deletion
-![two_dels_with_inv](imgs/del-inv-del.png)
+![two_dels_with_inv](imgs/del-inv-del.svg)
+
 This example also contains two deletion events, but in this case the non-deleted region between them is also inverted (identifiable from the dashed lines). The inversion is also visible in the `Sample structure` chain plot at the bottom.
 
 IGV of the same region for comparison, with supplementary alignments linked:
@@ -56,7 +60,8 @@ IGV of the same region for comparison, with supplementary alignments linked:
 <br><br>
 
 ### Deletion-nontandem-duplication
-![del-nontandem-dup](imgs/del-nontandem-dup.png)
+![del-nontandem-dup](imgs/del-nontandem-dup.svg)
+
 In this example, after an initial A->B->C structure, there is a second copy of B in inverted orientation. The second copy is immediately followed by region E, which means the region D between them is omitted. This example thus contains an inverted non-tandem duplication and a deletion.
 
 IGV of the same region for comparison, with supplementary alignments linked:
@@ -66,7 +71,8 @@ IGV of the same region for comparison, with supplementary alignments linked:
 
 
 ### Nontandem-duplication-deletion
-![nontandem-dup_del](imgs/nontandem-dup-del.png)
+![nontandem-dup_del](imgs/nontandem-dup-del.svg)
+
 This example contains a non-tandem duplication and a deletion.
 
 IGV of the same region for comparison, with supplementary alignments linked:
@@ -76,7 +82,8 @@ IGV of the same region for comparison, with supplementary alignments linked:
 
 
 ### Nontandem-inv-deletion
-![nontandem-inv-del](imgs/nontandem-inv-del.png)
+![nontandem-inv-del](imgs/nontandem-inv-del.svg)
+
 This example contains a non-tandem inversion and a deletion.
 
 IGV of the same region for comparison, with supplementary alignments linked:
@@ -85,7 +92,8 @@ IGV of the same region for comparison, with supplementary alignments linked:
 <br><br>
 
 ### Phased-nontandem-inv
-![nontandem-inv-phased](imgs/nontandem-inv-phased.png)
+![nontandem-inv-phased](imgs/nontandem-inv-phased.svg)
+
 This example contains a non-tandem inversion, re-created via phasing.
 
 IGV of the same region for comparison, with supplementary alignments linked:
@@ -94,7 +102,8 @@ IGV of the same region for comparison, with supplementary alignments linked:
 <br><br>
 
 ### Nontandem-inv
-![nontandem-inv](imgs/nontandem-inv.png)
+![nontandem-inv](imgs/nontandem-inv.svg)
+
 This example contains a non-tandem inversion.
 
 IGV of the same region for comparison, with supplementary alignments linked:
@@ -104,7 +113,8 @@ IGV of the same region for comparison, with supplementary alignments linked:
 
 
 ### Balanced-translocation
-![balanced-trans](imgs/balanced-trans-dup.png)
+![balanced-trans](imgs/balanced-trans-dup.svg)
+
 This example shows a translocation of two sequences from Chr12 into chr2. The double line in the `Reference path` chain plot shows the chromosomal transition.
 
 IGV of the same region for comparison, with supplementary alignments linked:
@@ -112,7 +122,8 @@ IGV of the same region for comparison, with supplementary alignments linked:
 
 
 ### Inversion with problematic breakpoint definitions
-![inv-bad-clipping](imgs/inv-bad-clipping.png)
+![inv-bad-clipping](imgs/inv-bad-clipping.svg)
+
 In this inversion case, the clipping locations for the breakpoints were unspecific due to alignment issues. The inversion is clear but presence of a flanking deletion is hard to determine.
 
 IGV of the same region for comparison, with supplementary alignments linked:
@@ -121,7 +132,8 @@ IGV of the same region for comparison, with supplementary alignments linked:
 <br><br>
 
 ### Incompletely resolved multi-region event
-![inv-bad-clipping](imgs/multi-chrom-broken.png)
+![inv-bad-clipping](imgs/multi-chrom-broken.svg)
+
 In this case, multiple regions are linked together through multimapping challenges in alignment.
 
 IGV of the same region for comparison, with supplementary alignments linked:

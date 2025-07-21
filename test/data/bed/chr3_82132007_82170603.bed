@@ -1,4 +1,4 @@
-#SVTopo v0.2.0
+#SVTopo v0.3.0
 #chrom	pos	end	image_name	variant_ids
 chr3	82132007	82152797	chr3-82132007-82170603	sawfish:0:8203:0:0:0,sawfish:0:8203:0:0:1,sawfish:0:8205:0:0:0,sawfish:0:8205:0:0:1
 chr3	82154398	82154464	chr3-82132007-82170603	sawfish:0:8203:0:0:0,sawfish:0:8203:0:0:1,sawfish:0:8205:0:0:0,sawfish:0:8205:0:0:1

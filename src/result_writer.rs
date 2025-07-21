@@ -27,21 +27,21 @@ pub fn write_results(
     let json_string = block_groups_to_json(&filtered_block_groups);
 
     if let Err(error) = write_json(json_string, json_path.clone()) {
-        error!("Error writing JSON result to outdir {}\n{}", outdir, error);
+        error!("Error writing JSON result to outdir {outdir}\n{error}");
         std::process::exit(exitcode::IOERR);
     }
 
     if write_unzipped {
         if let Err(error) = write_unzipped_bed(&filtered_block_groups, bed_path.clone()) {
-            error!("Error writing BED result to outdir {}\n{}", outdir, error);
+            error!("Error writing BED result to outdir {outdir}\n{error}");
             std::process::exit(exitcode::IOERR);
         }
     } else if let Err(error) = write_gzipped_bed(&filtered_block_groups, bed_path.clone()) {
-        error!("Error writing BED result to outdir {}\n{}", outdir, error);
+        error!("Error writing BED result to outdir {outdir}\n{error}");
         std::process::exit(exitcode::IOERR);
     }
-    info!("JSON written to {}", json_path,);
-    info!("BED written to {}", bed_path,);
+    info!("JSON written to {json_path}",);
+    info!("BED written to {bed_path}",);
 }
 
 /// Convert block groups into a pretty json String
@@ -98,11 +98,8 @@ fn write_unzipped_bed(
     let mut bedfile = File::create(bed_path.clone())?;
 
     let version = env!("CARGO_PKG_VERSION");
-    let header = format!(
-        "#SVTopo v{}\n#chrom\tpos\tend\timage_name\tvariant_ids",
-        version
-    );
-    writeln!(bedfile, "{}", header)?;
+    let header = format!("#SVTopo v{version}\n#chrom\tpos\tend\timage_name\tvariant_ids");
+    writeln!(bedfile, "{header}")?;
 
     for complex_event in filtered_block_groups.event_graphs.iter() {
         let mut coords: Vec<Coordinate> = Vec::new();
@@ -123,7 +120,7 @@ fn write_unzipped_bed(
                 "{}\t{}\t{}\t{}\t{}",
                 coord.start_chrom, coord.start, coord.end, image_name, var_ids_string
             );
-            writeln!(bedfile, "{}", entry)?;
+            writeln!(bedfile, "{entry}")?;
         }
     }
 
@@ -146,10 +143,7 @@ fn write_gzipped_bed(
     let mut writer = BGZFWriter::new(&mut buf_writer, Compression::default());
 
     let version = env!("CARGO_PKG_VERSION");
-    let header = format!(
-        "#SVTopo v{}\n#chrom\tpos\tend\timage_name\tvariant_ids\n",
-        version
-    );
+    let header = format!("#SVTopo v{version}\n#chrom\tpos\tend\timage_name\tvariant_ids\n");
 
     writer.write_all(header.as_bytes())?;
 
@@ -201,7 +195,7 @@ fn get_image_name(coords: &Vec<Coordinate>) -> String {
             let start_opt = positions.iter().min();
             let end_opt = positions.iter().max();
             if let (Some(start), Some(end)) = (start_opt, end_opt) {
-                let region_string = format!("{}-{}-{}", chrom, start, end);
+                let region_string = format!("{chrom}-{start}-{end}");
                 simplified_regions.push(region_string);
             }
         }

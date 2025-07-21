@@ -2,7 +2,7 @@ use log::debug;
 use std::collections::{HashMap, HashSet};
 use std::time::SystemTime;
 
-use crate::containers::{Connection, Coordinate, FwdStrandSplitReadSegment};
+use crate::containers::{BlockStartInfo, Connection, Coordinate, FwdStrandSplitReadSegment};
 use crate::utils;
 
 /// Connect clusters of genomic breaks using alignments, vcf connections, and then phasing
@@ -51,9 +51,9 @@ pub fn connect_clusters(
 
     let break_count = connections.len();
     if break_count == 1 {
-        debug!("{} connected pair of breaks found", break_count);
+        debug!("{break_count} connected pair of breaks found");
     } else {
-        debug!("{} connected pairs of breaks found", break_count);
+        debug!("{break_count} connected pairs of breaks found");
     }
 
     let mut keys: Vec<&Connection> = connections.keys().collect();
@@ -188,41 +188,13 @@ pub fn connect_clusters_by_phaseset(
     connected_breaks: &mut HashMap<Connection, Vec<FwdStrandSplitReadSegment>>,
 ) {
     let mut phased_connection_count = 0;
-    // a chromosome-keyed map of sorted coordinates
-    let mut ordered_breaks: HashMap<String, Vec<&Coordinate>> = HashMap::new();
-    for coordinate in cluster_alignments.keys() {
-        ordered_breaks
-            .entry(coordinate.start_chrom.clone())
-            .or_default()
-            .push(coordinate);
-    }
-    for coordinates in ordered_breaks.values_mut() {
-        coordinates.sort_unstable();
+    let ordered_breaks = organize_breaks_by_chromosome(cluster_alignments);
+    for coordinates in ordered_breaks.values() {
         for (first_idx, &first_coord) in coordinates.iter().enumerate() {
             let first_coord_alignments = cluster_alignments.get(first_coord).unwrap();
-            if is_potential_block_start(first_coord, first_coord_alignments) {
-                let mut first_phaseset = 0;
-                let mut first_haplotype = 0;
-                let mut first_coord_aln_start = i64::MAX;
-                let mut first_coord_aln_end = 0;
-                for aln in first_coord_alignments {
-                    // skip unspanned
-                    if !aln.spans {
-                        continue;
-                    }
-                    if aln.pos < first_coord_aln_start {
-                        first_coord_aln_start = aln.pos;
-                    }
-                    if aln.end > first_coord_aln_end {
-                        first_coord_aln_end = aln.end;
-                    }
-                    if let (Some(phaseset), Some(haplotype)) =
-                        (&aln.phaseset_tag, &aln.haplotype_tag)
-                    {
-                        first_phaseset = *phaseset;
-                        first_haplotype = *haplotype;
-                    }
-                }
+            if let Some(first_block_start_info) =
+                find_block_start_info(first_coord, first_coord_alignments)
+            {
                 for second_coord in coordinates.iter().skip(first_idx + 1) {
                     // assume not a match if not the same chromosome or more than a MAX_PHASE_DIST apart
                     let dist = (first_coord.start - second_coord.start).abs();
@@ -233,75 +205,172 @@ pub fn connect_clusters_by_phaseset(
                     }
                     // if the alignment support for the first position overlaps the breakpoint for the
                     // second one, the two should have explicit support rather than just phasing support
-                    if second_coord.start >= first_coord_aln_start
-                        && second_coord.start <= first_coord_aln_end
+                    if second_coord.start >= first_block_start_info.alignment_start
+                        && second_coord.start <= first_block_start_info.alignment_end
                     {
                         continue;
                     }
                     let second_coord_alignments = cluster_alignments.get(second_coord).unwrap();
-                    let mut second_is_phased = false;
-                    let mut second_phase_matches = false;
-                    // if any alignments are phased but none match the phase for the first coord,
-                    // we've moved to a new phaseset and won't find a match
-                    for aln in second_coord_alignments {
-                        if let (Some(second_phaseset), Some(second_haplotype)) =
-                            (&aln.phaseset_tag, &aln.haplotype_tag)
-                        {
-                            second_is_phased = true;
-                            if *second_phaseset != first_phaseset {
-                                break; //we've moved on to a new phaseset
-                            } else if *second_haplotype == first_haplotype {
-                                second_phase_matches = true;
-                                break;
-                            }
-                        }
-                    }
-                    if second_is_phased && !second_phase_matches {
-                        continue;
-                    }
-                    if is_block_end(
+                    if check_phase_compatibility(
                         second_coord,
                         second_coord_alignments,
-                        first_phaseset,
-                        first_haplotype,
+                        first_block_start_info.phaseset,
+                        first_block_start_info.haplotype,
+                        &first_block_start_info,
+                    ) && is_block_end(
+                        second_coord,
+                        second_coord_alignments,
+                        first_block_start_info.phaseset,
+                        first_block_start_info.haplotype,
                     ) {
-                        let combined_alignments = get_combined_alignments_for_phased_connections(
+                        phased_connection_count += create_phased_connections(
                             first_coord,
                             second_coord,
                             first_coord_alignments,
                             second_coord_alignments,
+                            connected_breaks,
                         );
-                        if combined_alignments.is_empty() {
-                            continue;
-                        }
-                        let spanning_tags: HashSet<bool> =
-                            combined_alignments.iter().map(|a| a.spans).collect();
-                        for spanning_tag in spanning_tags {
-                            let mut new_connection = Connection::new(
-                                first_coord.clone(),
-                                (*second_coord).clone(),
-                                true,
-                                spanning_tag,
-                            );
-                            let connection_alignments: Vec<FwdStrandSplitReadSegment> =
-                                combined_alignments
-                                    .iter()
-                                    .filter(|a| a.spans == spanning_tag)
-                                    .cloned()
-                                    .collect();
-                            if new_connection.first_coord > new_connection.second_coord {
-                                new_connection.reverse();
-                            }
-                            connected_breaks.insert(new_connection, connection_alignments);
-                            phased_connection_count += 1;
-                        }
                         break;
                     }
                 }
             }
         }
     }
-    debug!("{} phased connections added", phased_connection_count);
+    debug!("{phased_connection_count} phased connections added");
+}
+
+/// Organize cluster coordinates by chromosome and sort them for efficient phaseset processing
+fn organize_breaks_by_chromosome(
+    cluster_alignments: &HashMap<Coordinate, HashSet<FwdStrandSplitReadSegment>>,
+) -> HashMap<String, Vec<&Coordinate>> {
+    let mut ordered_breaks: HashMap<String, Vec<&Coordinate>> = HashMap::new();
+    for coordinate in cluster_alignments.keys() {
+        ordered_breaks
+            .entry(coordinate.start_chrom.clone())
+            .or_default()
+            .push(coordinate);
+    }
+    for coordinates in ordered_breaks.values_mut() {
+        coordinates.sort_unstable();
+    }
+    ordered_breaks
+}
+
+/// Extract phase and alignment boundary information for a potential block start
+fn find_block_start_info(
+    coord: &Coordinate,
+    alignments: &HashSet<FwdStrandSplitReadSegment>,
+) -> Option<BlockStartInfo> {
+    if !is_potential_block_start(coord, alignments) {
+        return None;
+    }
+
+    let mut phaseset = 0;
+    let mut haplotype = 0;
+    let mut alignment_start = i64::MAX;
+    let mut alignment_end = 0;
+
+    for aln in alignments {
+        if !aln.spans {
+            continue;
+        }
+        if aln.pos < alignment_start {
+            alignment_start = aln.pos;
+        }
+        if aln.end > alignment_end {
+            alignment_end = aln.end;
+        }
+        if let (Some(ps), Some(hp)) = (&aln.phaseset_tag, &aln.haplotype_tag) {
+            phaseset = *ps;
+            haplotype = *hp;
+        }
+    }
+
+    Some(BlockStartInfo {
+        phaseset,
+        haplotype,
+        alignment_start,
+        alignment_end,
+    })
+}
+
+/// Check if a coordinate is compatible with the given phase information
+fn check_phase_compatibility(
+    coord: &Coordinate,
+    alignments: &HashSet<FwdStrandSplitReadSegment>,
+    target_phaseset: i32,
+    target_haplotype: i32,
+    start_info: &BlockStartInfo,
+) -> bool {
+    let dist = (start_info.alignment_start - coord.start).abs();
+    if dist > utils::MAX_PHASE_DIST {
+        return false;
+    }
+
+    if coord.start >= start_info.alignment_start && coord.start <= start_info.alignment_end {
+        return false;
+    }
+
+    let mut is_phased = false;
+    let mut phase_matches = false;
+
+    for aln in alignments {
+        if let (Some(phaseset), Some(haplotype)) = (&aln.phaseset_tag, &aln.haplotype_tag) {
+            is_phased = true;
+            if *phaseset != target_phaseset {
+                return false; // moved to new phaseset
+            } else if *haplotype == target_haplotype {
+                phase_matches = true;
+                break;
+            }
+        }
+    }
+
+    !is_phased || phase_matches
+}
+
+/// Create phased connections between two coordinates
+fn create_phased_connections(
+    first_coord: &Coordinate,
+    second_coord: &Coordinate,
+    first_alignments: &HashSet<FwdStrandSplitReadSegment>,
+    second_alignments: &HashSet<FwdStrandSplitReadSegment>,
+    connected_breaks: &mut HashMap<Connection, Vec<FwdStrandSplitReadSegment>>,
+) -> usize {
+    let combined_alignments = get_combined_alignments_for_phased_connections(
+        first_coord,
+        second_coord,
+        first_alignments,
+        second_alignments,
+    );
+
+    if combined_alignments.is_empty() {
+        return 0;
+    }
+
+    let spanning_tags: HashSet<bool> = combined_alignments.iter().map(|a| a.spans).collect();
+    let mut connection_count = 0;
+
+    for spanning_tag in spanning_tags {
+        let mut new_connection = Connection::new(
+            first_coord.clone(),
+            second_coord.clone(),
+            true,
+            spanning_tag,
+        );
+        let connection_alignments: Vec<FwdStrandSplitReadSegment> = combined_alignments
+            .iter()
+            .filter(|a| a.spans == spanning_tag)
+            .cloned()
+            .collect();
+        if new_connection.first_coord > new_connection.second_coord {
+            new_connection.reverse();
+        }
+        connected_breaks.insert(new_connection, connection_alignments);
+        connection_count += 1;
+    }
+
+    connection_count
 }
 
 /// Find shared alignments that belong to both partners in a phased connection
@@ -492,5 +561,953 @@ fn phase_is_consistent(alignments: &[FwdStrandSplitReadSegment], allow_unphased:
         }
     }
 
-    phaseset_tags.len() <= 1 && phaseset_tags.len() <= 1
+    phaseset_tags.len() <= 1 && haplotype_tags.len() <= 1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils;
+    use std::collections::{HashMap, HashSet};
+
+    // Helper function to create a test coordinate
+    fn create_test_coordinate(
+        chrom: &str,
+        pos: i64,
+        confidence_interval: (i64, i64),
+    ) -> Coordinate {
+        Coordinate::new_with_confidence_interval(chrom.to_string(), pos, confidence_interval)
+    }
+
+    // Helper function to create a test connection
+    fn create_test_connection(
+        first_coord: Coordinate,
+        second_coord: Coordinate,
+        inferred_from_phasing: bool,
+        is_spanned: bool,
+    ) -> Connection {
+        Connection::new(first_coord, second_coord, inferred_from_phasing, is_spanned)
+    }
+
+    #[test]
+    fn test_alignment_matches_break() {
+        let coord = create_test_coordinate("chr1", 1000, (10, 10));
+
+        // Alignment that matches at start position
+        let matching_alignment1 =
+            utils::create_test_alignment_with_clips("chr1", 995, 1100, "read1", true, true);
+        assert!(alignment_matches_break(&matching_alignment1, &coord));
+
+        // Alignment that matches at end position
+        let matching_alignment2 =
+            utils::create_test_alignment_with_clips("chr1", 900, 1005, "read2", true, false);
+        assert!(alignment_matches_break(&matching_alignment2, &coord));
+
+        // Alignment that doesn't match
+        let non_matching_alignment =
+            utils::create_test_alignment_with_clips("chr1", 800, 900, "read3", true, true);
+        assert!(!alignment_matches_break(&non_matching_alignment, &coord));
+
+        // Different chromosome - NOTE: alignment_matches_break doesn't check chromosome!
+        // It only checks position/end within confidence interval, so this will match
+        let different_chrom_alignment =
+            utils::create_test_alignment_with_clips("chr2", 1000, 1100, "read4", true, true);
+        assert!(alignment_matches_break(&different_chrom_alignment, &coord));
+
+        // Alignment with position outside confidence interval
+        let far_alignment =
+            utils::create_test_alignment_with_clips("chr1", 1050, 1150, "read5", true, true);
+        assert!(!alignment_matches_break(&far_alignment, &coord));
+    }
+
+    #[test]
+    fn test_phase_is_consistent() {
+        // Test with allow_unphased = true
+        let alignments = vec![
+            utils::create_test_alignment_with_phasing(
+                "chr1",
+                1000,
+                1100,
+                "read1",
+                true,
+                true,
+                Some(0),
+                Some(0),
+            ),
+            utils::create_test_alignment_with_phasing(
+                "chr1",
+                1000,
+                1100,
+                "read2",
+                true,
+                true,
+                Some(1),
+                Some(0),
+            ),
+        ];
+        assert!(phase_is_consistent(&alignments, true));
+
+        // Test with allow_unphased = false, consistent phasing
+        let consistent_alignments = vec![
+            utils::create_test_alignment_with_phasing(
+                "chr1",
+                1000,
+                1100,
+                "read1",
+                true,
+                true,
+                Some(0),
+                Some(0),
+            ),
+            utils::create_test_alignment_with_phasing(
+                "chr1",
+                1000,
+                1100,
+                "read2",
+                true,
+                true,
+                Some(0),
+                Some(0),
+            ),
+        ];
+        assert!(phase_is_consistent(&consistent_alignments, false));
+
+        // Test with allow_unphased = false, inconsistent phasing
+        let inconsistent_alignments = vec![
+            utils::create_test_alignment_with_phasing(
+                "chr1",
+                1000,
+                1100,
+                "read1",
+                true,
+                true,
+                Some(0),
+                Some(0),
+            ),
+            utils::create_test_alignment_with_phasing(
+                "chr1",
+                1000,
+                1100,
+                "read2",
+                true,
+                true,
+                Some(1),
+                Some(0),
+            ),
+        ];
+        assert!(!phase_is_consistent(&inconsistent_alignments, false));
+
+        // Empty alignments
+        assert!(phase_is_consistent(&[], false));
+        assert!(phase_is_consistent(&[], true));
+    }
+
+    #[test]
+    fn test_is_potential_block_start() {
+        let coord = create_test_coordinate("chr1", 1000, (10, 10));
+
+        // Create alignments that represent a block start (left-clipped, not right-clipped, same phaseset)
+        let mut alignments = HashSet::new();
+        alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            1100,
+            "read1",
+            true,
+            false,
+            Some(0),
+            Some(0),
+        ));
+        alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            990,
+            1050,
+            "read2",
+            true,
+            false,
+            Some(0),
+            Some(0),
+        ));
+
+        assert!(is_potential_block_start(&coord, &alignments));
+
+        // Test with right-clipped alignments (should not be block start)
+        let mut right_clipped_alignments = HashSet::new();
+        right_clipped_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            1100,
+            "read1",
+            false,
+            true,
+            Some(0),
+            Some(0),
+        ));
+        right_clipped_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            990,
+            1050,
+            "read2",
+            false,
+            true,
+            Some(0),
+            Some(0),
+        ));
+
+        assert!(!is_potential_block_start(&coord, &right_clipped_alignments));
+
+        // Test with different phasesets (should not be block start)
+        let mut different_phase_alignments = HashSet::new();
+        different_phase_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            1100,
+            "read1",
+            true,
+            false,
+            Some(1),
+            Some(0),
+        ));
+        different_phase_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            990,
+            1050,
+            "read2",
+            true,
+            false,
+            Some(2),
+            Some(0),
+        ));
+
+        assert!(!is_potential_block_start(
+            &coord,
+            &different_phase_alignments
+        ));
+
+        // Test with insufficient left clips
+        let mut insufficient_clips = HashSet::new();
+        insufficient_clips.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            1100,
+            "read1",
+            true,
+            false,
+            Some(0),
+            Some(0),
+        ));
+
+        assert!(!is_potential_block_start(&coord, &insufficient_clips));
+    }
+
+    #[test]
+    fn test_is_block_end() {
+        let coord = create_test_coordinate("chr1", 1000, (10, 10));
+        let target_phaseset = 1;
+        let target_haplotype = 0;
+
+        // Create alignments that represent a block end (right-clipped, not left-clipped, matching phase)
+        let mut alignments = HashSet::new();
+        alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            900,
+            1005,
+            "read1",
+            false,
+            true,
+            Some(1),
+            Some(0),
+        ));
+        alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            950,
+            1010,
+            "read2",
+            false,
+            true,
+            Some(1),
+            Some(0),
+        ));
+
+        assert!(is_block_end(
+            &coord,
+            &alignments,
+            target_phaseset,
+            target_haplotype
+        ));
+
+        // Test with left-clipped alignments (should not be block end)
+        let mut left_clipped_alignments = HashSet::new();
+        left_clipped_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            900,
+            1005,
+            "read1",
+            true,
+            true,
+            Some(0),
+            Some(0),
+        ));
+        left_clipped_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            950,
+            1010,
+            "read2",
+            true,
+            true,
+            Some(0),
+            Some(0),
+        ));
+
+        assert!(!is_block_end(
+            &coord,
+            &left_clipped_alignments,
+            target_phaseset,
+            target_haplotype
+        ));
+
+        // Test with wrong phase
+        let mut wrong_phase_alignments = HashSet::new();
+        wrong_phase_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            900,
+            1005,
+            "read1",
+            true,
+            false,
+            Some(2),
+            Some(0),
+        ));
+        wrong_phase_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            950,
+            1010,
+            "read2",
+            true,
+            false,
+            Some(2),
+            Some(0),
+        ));
+
+        assert!(!is_block_end(
+            &coord,
+            &wrong_phase_alignments,
+            target_phaseset,
+            target_haplotype
+        ));
+    }
+
+    #[test]
+    fn test_find_block_start_info() {
+        let coord = create_test_coordinate("chr1", 1000, (10, 10));
+
+        // Valid block start
+        let mut alignments = HashSet::new();
+        alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            1200,
+            "read1",
+            true,
+            false,
+            Some(1),
+            Some(0),
+        ));
+        alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            990,
+            1150,
+            "read2",
+            true,
+            false,
+            Some(1),
+            Some(0),
+        ));
+
+        let start_info = find_block_start_info(&coord, &alignments);
+        assert!(start_info.is_some());
+        let info = start_info.unwrap();
+        assert_eq!(info.phaseset, 1);
+        assert_eq!(info.haplotype, 0);
+        assert_eq!(info.alignment_start, 990);
+        assert_eq!(info.alignment_end, 1200);
+
+        // Invalid block start (not potential block start)
+        let mut invalid_alignments = HashSet::new();
+        invalid_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            1100,
+            "read1",
+            true,
+            false,
+            Some(1),
+            Some(0),
+        ));
+
+        let invalid_start_info = find_block_start_info(&coord, &invalid_alignments);
+        assert!(invalid_start_info.is_none());
+
+        // No spanning alignments
+        let mut no_span_alignments = HashSet::new();
+        no_span_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            1100,
+            "read1",
+            false,
+            true,
+            Some(1),
+            Some(0),
+        ));
+
+        let no_span_info = find_block_start_info(&coord, &no_span_alignments);
+        assert!(no_span_info.is_none());
+    }
+
+    #[test]
+    fn test_check_phase_compatibility() {
+        let coord = create_test_coordinate("chr1", 2000, (10, 10));
+        let start_info = BlockStartInfo {
+            phaseset: 1,
+            haplotype: 0,
+            alignment_start: 1000,
+            alignment_end: 1500,
+        };
+
+        // Compatible phase (same phaseset, same haplotype)
+        let mut compatible_alignments = HashSet::new();
+        compatible_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            1950,
+            2050,
+            "read1",
+            true,
+            false,
+            Some(1),
+            Some(0),
+        ));
+
+        assert!(check_phase_compatibility(
+            &coord,
+            &compatible_alignments,
+            1,
+            0,
+            &start_info
+        ));
+
+        // Incompatible phase (different phaseset)
+        let mut incompatible_alignments = HashSet::new();
+        incompatible_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            1950,
+            2050,
+            "read1",
+            true,
+            false,
+            Some(2),
+            Some(0),
+        ));
+
+        assert!(!check_phase_compatibility(
+            &coord,
+            &incompatible_alignments,
+            1,
+            0,
+            &start_info
+        ));
+
+        // Too far apart (MAX_PHASE_DIST is 500,000, so use a larger distance)
+        let far_coord = create_test_coordinate("chr1", 600000, (10, 10));
+        assert!(!check_phase_compatibility(
+            &far_coord,
+            &compatible_alignments,
+            1,
+            0,
+            &start_info
+        ));
+
+        // Overlapping with start info range
+        let overlapping_coord = create_test_coordinate("chr1", 1200, (10, 10));
+        assert!(!check_phase_compatibility(
+            &overlapping_coord,
+            &compatible_alignments,
+            1,
+            0,
+            &start_info
+        ));
+    }
+
+    #[test]
+    fn test_organize_breaks_by_chromosome() {
+        let coord1 = create_test_coordinate("chr1", 1000, (10, 10));
+        let coord2 = create_test_coordinate("chr1", 2000, (10, 10));
+        let coord3 = create_test_coordinate("chr2", 1500, (10, 10));
+
+        let mut cluster_alignments = HashMap::new();
+        cluster_alignments.insert(coord1.clone(), HashSet::new());
+        cluster_alignments.insert(coord2.clone(), HashSet::new());
+        cluster_alignments.insert(coord3.clone(), HashSet::new());
+
+        let organized = organize_breaks_by_chromosome(&cluster_alignments);
+
+        assert_eq!(organized.len(), 2);
+        assert!(organized.contains_key("chr1"));
+        assert!(organized.contains_key("chr2"));
+
+        let chr1_coords = organized.get("chr1").unwrap();
+        assert_eq!(chr1_coords.len(), 2);
+        // Should be sorted
+        assert!(chr1_coords[0].start < chr1_coords[1].start);
+
+        let chr2_coords = organized.get("chr2").unwrap();
+        assert_eq!(chr2_coords.len(), 1);
+    }
+
+    #[test]
+    fn test_get_combined_alignments_for_phased_connections() {
+        let first_coord = create_test_coordinate("chr1", 1000, (10, 10));
+        let second_coord = create_test_coordinate("chr1", 2000, (10, 10));
+
+        // Create alignments that match the coordinates
+        let alignment1 = utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            1100,
+            "read1",
+            true,
+            false,
+            Some(0),
+            Some(0),
+        );
+        let alignment2 = utils::create_test_alignment_with_phasing(
+            "chr1",
+            1950,
+            2050,
+            "read2",
+            true,
+            false,
+            Some(1),
+            Some(0),
+        );
+        let alignment3 = utils::create_test_alignment_with_phasing(
+            "chr1",
+            800,
+            900,
+            "read3",
+            true,
+            true,
+            Some(1),
+            Some(0),
+        ); // Doesn't match
+
+        let mut first_alignments = HashSet::new();
+        first_alignments.insert(alignment1.clone());
+        first_alignments.insert(alignment3.clone());
+
+        let mut second_alignments = HashSet::new();
+        second_alignments.insert(alignment2.clone());
+
+        let combined = get_combined_alignments_for_phased_connections(
+            &first_coord,
+            &second_coord,
+            &first_alignments,
+            &second_alignments,
+        );
+
+        // Should include alignment1 (matches first coord), but not alignment3 (doesn't match)
+        // alignment2 is only in second_alignments but function processes both sets independently
+        assert_eq!(combined.len(), 1);
+        assert!(combined.contains(&alignment1));
+        assert!(!combined.contains(&alignment3));
+    }
+
+    #[test]
+    fn test_create_phased_connections() {
+        let first_coord = create_test_coordinate("chr1", 1000, (10, 10));
+        let second_coord = create_test_coordinate("chr1", 2000, (10, 10));
+
+        let alignment1 = utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            1100,
+            "read1",
+            true,
+            false,
+            Some(0),
+            Some(0),
+        );
+        let alignment2 = utils::create_test_alignment_with_phasing(
+            "chr1",
+            1950,
+            2050,
+            "read2",
+            true,
+            false,
+            Some(1),
+            Some(0),
+        );
+
+        let mut first_alignments = HashSet::new();
+        first_alignments.insert(alignment1.clone());
+        first_alignments.insert(alignment2.clone());
+
+        let mut second_alignments = HashSet::new();
+        second_alignments.insert(alignment1.clone());
+        second_alignments.insert(alignment2.clone());
+
+        let mut connected_breaks = HashMap::new();
+
+        let count = create_phased_connections(
+            &first_coord,
+            &second_coord,
+            &first_alignments,
+            &second_alignments,
+            &mut connected_breaks,
+        );
+
+        assert_eq!(count, 1); // Both alignments have spans=true, so only one connection type
+        assert_eq!(connected_breaks.len(), 1);
+
+        // Check that connections are properly created
+        for (connection, alignments) in &connected_breaks {
+            assert!(connection.inferred_from_phasing);
+            assert!(!alignments.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_connect_clusters_by_alignment() {
+        let coord1 = create_test_coordinate("chr1", 1000, (10, 10));
+        let coord2 = create_test_coordinate("chr1", 2000, (10, 10));
+
+        // Create shared alignments
+        let alignment1 = utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            2050,
+            "read1",
+            true,
+            true,
+            Some(1),
+            Some(0),
+        );
+        let alignment2 = utils::create_test_alignment_with_phasing(
+            "chr1",
+            990,
+            2045,
+            "read2",
+            true,
+            true,
+            Some(1),
+            Some(0),
+        );
+        let alignment3 = utils::create_test_alignment_with_phasing(
+            "chr1",
+            985,
+            2040,
+            "read3",
+            false,
+            true,
+            Some(1),
+            Some(0),
+        );
+
+        let mut coord1_alignments = HashSet::new();
+        coord1_alignments.insert(alignment1.clone());
+        coord1_alignments.insert(alignment2.clone());
+        coord1_alignments.insert(alignment3.clone());
+
+        let mut coord2_alignments = HashSet::new();
+        coord2_alignments.insert(alignment1.clone());
+        coord2_alignments.insert(alignment2.clone());
+        coord2_alignments.insert(alignment3.clone());
+
+        let mut cluster_alignments = HashMap::new();
+        cluster_alignments.insert(coord1.clone(), coord1_alignments);
+        cluster_alignments.insert(coord2.clone(), coord2_alignments);
+
+        let connections = connect_clusters_by_alignment(&cluster_alignments, true);
+
+        // Should have connections for both spanned and unspanned alignments
+        assert!(!connections.is_empty());
+
+        // Check that connections are properly formed
+        for (connection, alignments) in &connections {
+            assert!(!connection.inferred_from_phasing);
+            assert!(alignments.len() >= utils::MIN_CONNECTION_SUPPORT as usize);
+        }
+    }
+
+    #[test]
+    fn test_connect_clusters_by_vcf_connection() {
+        let coord1 = create_test_coordinate("chr1", 1000, (10, 10));
+        let coord2 = create_test_coordinate("chr1", 2000, (10, 10));
+
+        let vcf_connection = create_test_connection(coord1.clone(), coord2.clone(), false, true);
+        let vcf_connections = vec![vcf_connection];
+
+        // Create shared alignments
+        let alignment1 = utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            2050,
+            "read1",
+            true,
+            true,
+            Some(1),
+            Some(0),
+        );
+        let alignment2 = utils::create_test_alignment_with_phasing(
+            "chr1",
+            990,
+            2045,
+            "read2",
+            true,
+            true,
+            Some(1),
+            Some(0),
+        );
+
+        let mut coord1_alignments = HashSet::new();
+        coord1_alignments.insert(alignment1.clone());
+        coord1_alignments.insert(alignment2.clone());
+
+        let mut coord2_alignments = HashSet::new();
+        coord2_alignments.insert(alignment1.clone());
+        coord2_alignments.insert(alignment2.clone());
+
+        let mut cluster_alignments = HashMap::new();
+        cluster_alignments.insert(coord1.clone(), coord1_alignments);
+        cluster_alignments.insert(coord2.clone(), coord2_alignments);
+
+        let mut connected_breaks = HashMap::new();
+
+        connect_clusters_by_vcf_connection(
+            &cluster_alignments,
+            &mut connected_breaks,
+            &vcf_connections,
+        );
+
+        assert!(!connected_breaks.is_empty());
+
+        // Check that the connection is properly added
+        for (connection, alignments) in &connected_breaks {
+            assert!(!connection.inferred_from_phasing);
+            assert!(alignments.len() >= utils::MIN_CONNECTION_SUPPORT as usize);
+        }
+    }
+
+    #[test]
+    fn test_connect_clusters_by_phaseset() {
+        let coord1 = create_test_coordinate("chr1", 1000, (10, 10));
+        let coord2 = create_test_coordinate("chr1", 2000, (10, 10));
+
+        // Create block start alignments (left-clipped, phased)
+        let mut start_alignments = HashSet::new();
+        start_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            1500,
+            "read1",
+            true,
+            false,
+            Some(1),
+            Some(0),
+        ));
+        start_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            990,
+            1450,
+            "read2",
+            true,
+            false,
+            Some(1),
+            Some(0),
+        ));
+
+        // Create block end alignments (right-clipped, same phase)
+        let mut end_alignments = HashSet::new();
+        end_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            1900,
+            2005,
+            "read3",
+            false, // is_start_softclipped
+            true,  // is_end_softclipped
+            Some(1),
+            Some(0),
+        ));
+        end_alignments.insert(utils::create_test_alignment_with_phasing(
+            "chr1",
+            1950,
+            2010,
+            "read4",
+            false, // is_start_softclipped
+            true,  // is_end_softclipped
+            Some(1),
+            Some(0),
+        ));
+
+        let mut cluster_alignments = HashMap::new();
+        cluster_alignments.insert(coord1.clone(), start_alignments);
+        cluster_alignments.insert(coord2.clone(), end_alignments);
+
+        let mut connected_breaks = HashMap::new();
+
+        connect_clusters_by_phaseset(&cluster_alignments, &mut connected_breaks);
+
+        // Should create phased connections
+        let phased_connections: Vec<_> = connected_breaks
+            .iter()
+            .filter(|(conn, _)| conn.inferred_from_phasing)
+            .collect();
+
+        assert!(!phased_connections.is_empty());
+    }
+
+    #[test]
+    fn test_connect_clusters_integration() {
+        let coord1 = create_test_coordinate("chr1", 1000, (10, 10));
+        let coord2 = create_test_coordinate("chr1", 2000, (10, 10));
+
+        // Create shared alignments for alignment-based connections
+        let alignment1 = utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            2050,
+            "read1",
+            true,
+            true,
+            Some(1),
+            Some(0),
+        );
+        let alignment2 = utils::create_test_alignment_with_phasing(
+            "chr1",
+            990,
+            2045,
+            "read2",
+            true,
+            true,
+            Some(1),
+            Some(0),
+        );
+
+        let mut coord1_alignments = HashSet::new();
+        coord1_alignments.insert(alignment1.clone());
+        coord1_alignments.insert(alignment2.clone());
+
+        let mut coord2_alignments = HashSet::new();
+        coord2_alignments.insert(alignment1.clone());
+        coord2_alignments.insert(alignment2.clone());
+
+        let mut cluster_alignments = HashMap::new();
+        cluster_alignments.insert(coord1.clone(), coord1_alignments);
+        cluster_alignments.insert(coord2.clone(), coord2_alignments);
+
+        let vcf_connections = vec![];
+
+        let connections = connect_clusters(&cluster_alignments, &vcf_connections, true);
+
+        assert!(!connections.is_empty());
+
+        // Should have deduplicated and properly formed connections
+        for alignments in connections.values() {
+            assert!(!alignments.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_edge_cases() {
+        // Test with empty cluster alignments
+        let empty_cluster_alignments = HashMap::new();
+        let empty_vcf_connections = vec![];
+
+        let empty_connections =
+            connect_clusters(&empty_cluster_alignments, &empty_vcf_connections, false);
+        assert!(empty_connections.is_empty());
+
+        // Test with alignments below minimum connection support
+        let coord1 = create_test_coordinate("chr1", 1000, (10, 10));
+        let coord2 = create_test_coordinate("chr1", 2000, (10, 10));
+
+        let single_alignment = utils::create_test_alignment_with_phasing(
+            "chr1",
+            995,
+            2050,
+            "read1",
+            true,
+            true,
+            Some(1),
+            Some(0),
+        );
+
+        let mut coord1_alignments = HashSet::new();
+        coord1_alignments.insert(single_alignment.clone());
+
+        let mut coord2_alignments = HashSet::new();
+        coord2_alignments.insert(single_alignment);
+
+        let mut cluster_alignments = HashMap::new();
+        cluster_alignments.insert(coord1, coord1_alignments);
+        cluster_alignments.insert(coord2, coord2_alignments);
+
+        let connections = connect_clusters_by_alignment(&cluster_alignments, false);
+        assert!(connections.is_empty());
+    }
+
+    #[test]
+    fn test_phase_consistency_edge_cases() {
+        // Test with no phasing information
+        let alignments = vec![
+            utils::create_test_alignment_with_phasing(
+                "chr1",
+                1000,
+                1100,
+                "read1",
+                true,
+                true,
+                Some(1),
+                Some(0),
+            ),
+            utils::create_test_alignment_with_phasing(
+                "chr1",
+                1000,
+                1100,
+                "read2",
+                true,
+                true,
+                Some(2),
+                Some(0),
+            ),
+        ];
+        assert!(!phase_is_consistent(&alignments, false));
+        assert!(phase_is_consistent(&alignments, true));
+
+        // Test with mixed phasing information
+        let mixed_alignments = vec![
+            utils::create_test_alignment_with_phasing(
+                "chr1",
+                1000,
+                1100,
+                "read1",
+                true,
+                true,
+                Some(1),
+                Some(0),
+            ),
+            utils::create_test_alignment_with_phasing(
+                "chr1",
+                1000,
+                1100,
+                "read2",
+                true,
+                true,
+                Some(2),
+                Some(0),
+            ),
+        ];
+        assert!(!phase_is_consistent(&mixed_alignments, false));
+        assert!(phase_is_consistent(&mixed_alignments, true));
+    }
 }

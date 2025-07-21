@@ -1,0 +1,95 @@
+{
+  "svtopo_version": "0.2.0",
+  "event_graphs": [
+    [
+      {
+        "region": {
+          "start_chrom": "chr10",
+          "start": 65513263,
+          "end_chrom": "chr10",
+          "end": 65524270
+        },
+        "coverages": {
+          "chr10:65513263": 1,
+          "chr10:65517075": 2,
+          "chr10:65517831": 3,
+          "chr10:65520167": 4,
+          "chr10:65520920": 5,
+          "chr10:65522190": 6,
+          "chr10:65522637": 7,
+          "chr10:65523245": 8,
+          "chr10:65523521": 9,
+          "chr10:65523769": 10,
+          "chr10:65524270": 0
+        },
+        "sample_order_index": 0,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr10",
+          "start": 65524270,
+          "end_chrom": "chr12",
+          "end": 75523572
+        },
+        "coverages": {},
+        "sample_order_index": 1,
+        "orientation": "+"
+      },
+      {
+        "region": {
+          "start_chrom": "chr12",
+          "start": 75521091,
+          "end_chrom": "chr12",
+          "end": 75523572
+        },
+        "coverages": {
+          "chr12:75521091": 1,
+          "chr12:75521102": 14,
+          "chr12:75523572": 0
+        },
+        "sample_order_index": 2,
+        "orientation": "-"
+      },
+      {
+        "region": {
+          "start_chrom": "chr10",
+          "start": 65524706,
+          "end_chrom": "chr12",
+          "end": 75521102
+        },
+        "coverages": {},
+        "sample_order_index": 3,
+        "orientation": "-"
+      },
+      {
+        "region": {
+          "start_chrom": "chr10",
+          "start": 65524706,
+          "end_chrom": "chr10",
+          "end": 65543775
+        },
+        "coverages": {
+          "chr10:65524706": 13,
+          "chr10:65524719": 14,
+          "chr10:65529691": 13,
+          "chr10:65530066": 12,
+          "chr10:65530383": 11,
+          "chr10:65530944": 10,
+          "chr10:65532731": 9,
+          "chr10:65533450": 8,
+          "chr10:65535642": 7,
+          "chr10:65537694": 6,
+          "chr10:65540183": 5,
+          "chr10:65540980": 4,
+          "chr10:65541790": 3,
+          "chr10:65542834": 2,
+          "chr10:65543556": 1,
+          "chr10:65543775": 0
+        },
+        "sample_order_index": 4,
+        "orientation": "+"
+      }
+    ]
+  ]
+}

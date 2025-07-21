@@ -18,6 +18,7 @@ def plot_spanned_block(
     orientation: bool,
     matched_order_count: int,
     sample_idx,
+    annotation_region_height,
     ax,
 ):
     """
@@ -54,10 +55,14 @@ def plot_spanned_block(
         sorted_coverages,
         matched_order_count,
         window.chrom,
-        plot_idx,
+        plot_idx + annotation_region_height,
     )
     plot_rectangle(
-        ax, window.size, matched_order_count, rectangle_start, rectangle_end, plot_idx
+        ax,
+        matched_order_count,
+        rectangle_start,
+        rectangle_end,
+        plot_idx + annotation_region_height,
     )
 
     start_coords, end_coords = plot_arrowhead(
@@ -68,14 +73,19 @@ def plot_spanned_block(
         rectangle_end,
         orientation,
         sample_idx,
-        plot_idx,
+        plot_idx + annotation_region_height,
     )
 
     return start_coords, end_coords
 
 
 def plot_coverages(
-    ax, scaled_coverages, sorted_coverages, matched_order_count, window_chrom, plot_idx
+    ax,
+    scaled_coverages,
+    sorted_coverages,
+    matched_order_count,
+    window_chrom,
+    y_value,
 ):
     """
     Plot alignments coverage if this isn't the end.
@@ -89,7 +99,7 @@ def plot_coverages(
             continue
         if prev_alignment_start is not None:
             ax.hlines(
-                y=plot_idx,
+                y=y_value,
                 xmin=prev_alignment_start,
                 xmax=curr_alignment.start,
                 linewidth=prev_coverage / matched_order_count,
@@ -100,12 +110,15 @@ def plot_coverages(
 
 
 def plot_rectangle(
-    ax, window_size, matched_order_count, rectangle_start, rectangle_end, plot_idx
+    ax,
+    matched_order_count,
+    rectangle_start,
+    rectangle_end,
+    y_value,
 ):
     """
     Plot the rectangle around a spanned block
     """
-    arrow_len = window_size / ARROWHEAD_SIZE
     rectangle_fill = False
     rectangle_color = "darkgrey"
     if matched_order_count > 1:
@@ -114,11 +127,11 @@ def plot_rectangle(
 
     rectangle = plt.Polygon(
         [
-            [rectangle_start, plot_idx + patch_halfwidth],
-            [rectangle_start, plot_idx - patch_halfwidth],
-            [rectangle_end, plot_idx - patch_halfwidth],
-            [rectangle_end, plot_idx + patch_halfwidth],
-            [rectangle_start, plot_idx + patch_halfwidth],
+            [rectangle_start, y_value + patch_halfwidth],
+            [rectangle_start, y_value - patch_halfwidth],
+            [rectangle_end, y_value - patch_halfwidth],
+            [rectangle_end, y_value + patch_halfwidth],
+            [rectangle_start, y_value + patch_halfwidth],
         ],
         fill=rectangle_fill,
         lw=0.5,
@@ -135,7 +148,7 @@ def plot_arrowhead(
     rectangle_end,
     orientation,
     sample_idx,
-    plot_idx,
+    y_value,
 ):
     """
     Plot the arrowhead that shows directionality of the block
@@ -152,10 +165,10 @@ def plot_arrowhead(
     if orientation == "+":
         arrowhead = plt.Polygon(
             [
-                [rectangle_end, plot_idx + patch_halfwidth],
-                [rectangle_end + arrow_len, plot_idx],
-                [rectangle_end, plot_idx - patch_halfwidth],
-                [rectangle_end, plot_idx + patch_halfwidth],
+                [rectangle_end, y_value + patch_halfwidth],
+                [rectangle_end + arrow_len, y_value],
+                [rectangle_end, y_value - patch_halfwidth],
+                [rectangle_end, y_value + patch_halfwidth],
             ],
             color=rectangle_color,
             fill=False,
@@ -164,10 +177,10 @@ def plot_arrowhead(
     elif orientation == "-":
         arrowhead = plt.Polygon(
             [
-                [rectangle_start, plot_idx + patch_halfwidth],
-                [rectangle_start - arrow_len, plot_idx],
-                [rectangle_start, plot_idx - patch_halfwidth],
-                [rectangle_start, plot_idx + patch_halfwidth],
+                [rectangle_start, y_value + patch_halfwidth],
+                [rectangle_start - arrow_len, y_value],
+                [rectangle_start, y_value - patch_halfwidth],
+                [rectangle_start, y_value + patch_halfwidth],
             ],
             color=rectangle_color,
             fill=False,
@@ -332,6 +345,7 @@ def plot_unspanned_block(
     plot_idx: float,
     window,
     spanned_block_ends: dict,
+    annotation_region_height,
     ax,
 ):
     """
@@ -404,7 +418,7 @@ def plot_unspanned_block(
     y = []
     for coord in arrow_coords:
         x.append(coord[0])
-        y.append(coord[1])
+        y.append(coord[1] + annotation_region_height)
     x = np.array(x)
     y = np.array(y)
     ax.plot(x, y, linestyle="dashed", color="gray", linewidth=0.75)
@@ -434,6 +448,7 @@ def plot_unspanned_blocks(
     block_count,
     spanned_block_ends,
     window,
+    annotation_region_height,
     ax,
 ):
     """
@@ -471,12 +486,18 @@ def plot_unspanned_blocks(
                 plot_idx,
                 window,
                 spanned_block_ends,
+                annotation_region_height,
                 ax,
             )
 
 
 def plot_spanned_blocks(
-    region_info_by_sample_order, max_sample_idx, block_count, window, ax
+    region_info_by_sample_order,
+    max_sample_idx,
+    block_count,
+    window,
+    annotation_region_height,
+    ax,
 ):
     """
     Go through all blocks in this region and plot the ones that are spanned.
@@ -521,6 +542,7 @@ def plot_spanned_blocks(
                 orientation,
                 matched_order_count,
                 sample_idx,
+                annotation_region_height,
                 ax,
             )
             if len(block_start_coords) > 0:
@@ -536,6 +558,7 @@ def plot_breaks(
     window,
     block_count,
     window_count,
+    annotation_region_height,
     ax,
 ):
     """
@@ -547,6 +570,7 @@ def plot_breaks(
         max_sample_idx,
         block_count,
         window,
+        annotation_region_height,
         ax,
     )
     plot_unspanned_blocks(
@@ -555,6 +579,7 @@ def plot_breaks(
         block_count,
         spanned_block_ends,
         window,
+        annotation_region_height,
         ax,
     )
 

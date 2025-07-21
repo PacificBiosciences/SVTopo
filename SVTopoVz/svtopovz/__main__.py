@@ -13,15 +13,15 @@ from .svtopovz import svtopovz
 
 
 def valid_file(filepath):
-    if not path.exists(filepath) and path.isfile(filepath):
-        return False
+    if not path.isfile(filepath):
+        raise argparse.ArgumentTypeError(f"{filepath} is not a valid file path.")
     return filepath
 
 
-def valid_prefix(prefix):
-    if not path.exists(path.dirname(prefix)) and path.isfile(path.dirname(prefix)):
-        return False
-    return prefix
+def valid_dir(dirpath):
+    if not path.isdir(dirpath):
+        raise argparse.ArgumentTypeError(f"{dirpath} is not a valid directory path.")
+    return dirpath
 
 
 def positive_int(value):
@@ -50,17 +50,18 @@ def setup_args():
         "--svtopo-dir",
         help="path to directory containing one or more svtopo output file pairs (in json and bed format). GZIP allowed. ",
         required=True,
-        type=valid_file,
+        type=valid_dir,
     )
     parser.add_argument(
-        "--bed",
-        help="path to genome annotations in BED file format - optionally allows annotation title in column 4 and strand (+/-) in column 5",
+        "--annotation-bed",
+        help="space delimited list of one or more paths to genome annotations in BED file format - optionally allows annotation title in column 4 and strand (+/-) in column 5",
         required=False,
         type=valid_file,
+        nargs="*",
     )
     parser.add_argument(
         "--genes",
-        help="path to gene annotations in GFF3 or GTF format (based on GENCODE v45 annotations)",
+        help="single path to gene annotations in GFF3 or GTF format (based on GENCODE v45 annotations)",
         required=False,
         type=valid_file,
     )
@@ -99,12 +100,7 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
-    if sys.version_info < (3, 10):
-        logger.error("SVTopoVz requires at least Python 3.10")
-        sys.exit()
-
     if not path.isdir(args.svtopo_dir):
-
         logger.error("SVTopo directory {} does not exist".format(args.svtopo_dir))
         sys.exit()
 

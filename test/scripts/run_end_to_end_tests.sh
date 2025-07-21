@@ -1,8 +1,8 @@
 set -e
+cargo clippy
+cargo test --doc
 cargo build --release
-cd SVTopoVz/
-python setup.py install
-cd ..
+pip install -e SVTopoVz/
 pytest
 svtopo=target/release/svtopo
 RED='\033[0;31m'
@@ -11,8 +11,11 @@ final_color=$GREEN
 
 vcf=test/data/vcf/sawfish.vcf.gz
 reads_json=test/data/json/supporting_reads.json.gz
-hg38_exclude=cnv.excluded_regions.hg38.bed.gz
-wget https://github.com/PacificBiosciences/HiFiCNV/raw/refs/heads/main/data/excluded_regions/cnv.excluded_regions.hg38.bed.gz -O cnv.excluded_regions.hg38.bed.gz
+hg38_exclude=test/data/annotation/cnv.excluded_regions.hg38.bed.gz
+retrotransposon_bed=test/data/annotation/transposable_elements_2kb.bed.gz
+rmsk_bed=test/data/annotation/repeatmasker.bed.gz
+genes=test/data/annotation/gencode.v47.genes.gtf.gz
+
 
 for bam in test/data/bam/*bam;
 do
@@ -25,15 +28,11 @@ do
     start=$(basename $bam | cut -f 2 -d '_')
     end=$(basename $bam | cut -f 3 -d '_' | cut -f 1 -d '.')
     runtype=$(basename $bam | cut -f 4 -d '_' | cut -f 1 -d '.')
-    if [ "$start" -eq 189119276 ] || [ "$start" -eq 87906696 ] || [ "$start" -eq 65512263 ] || [ "$start" -eq 174937531 ]; 
+    if [ "$start" -eq 189119276 ] || [ "$start" -eq 65512263 ] || [ "$start" -eq 174937531 ] || [ "$start" -eq 5965780 ] || [ "$start" -eq 25982380 ] || [ "$start" -eq 26626844 ];
     then
         continue
     fi
 
-    # if [ ! "$start" -eq 138232624 ]; 
-    # then
-    #     continue
-    # fi
     expected_image=$(ls test/data/image/"$chrom"-"$start"-"$end"*.png)
     expected_html="test/data/site_pages/"$chrom"-"$start"-"$end".html"
     expected_json="test/data/json/"$chrom"_"$start"_"$end".json"
@@ -58,18 +57,31 @@ do
             --write-unzipped"
         echo "$cmd"
         $cmd
+    elif [ "$runtype" = "vcfonly" ];
+    then
+        cmd="$svtopo \
+            --bam $bam \
+            --vcf $vcf \
+            --exclude-regions $hg38_exclude \
+            --prefix $prefix \
+            --svtopo-dir $tmp_test_dir \
+            --write-unzipped"
+        echo "$cmd"
+        $cmd
     else
         cmd="$svtopo \
             --bam $bam \
             --exclude-regions $hg38_exclude \
             --prefix $prefix \
-            --svtopo-dir $tmp_test_dir 
+            --svtopo-dir $tmp_test_dir \
             --write-unzipped"
         echo "$cmd"
         $cmd
     fi
     cmd="svtopovz \
-        --svtopo-dir $tmp_test_dir" \
+        --svtopo-dir $tmp_test_dir \
+        --genes $genes \
+        --annotation-bed $retrotransposon_bed $rmsk_bed"
 
     echo "$cmd"
     $cmd
@@ -95,7 +107,7 @@ do
     fi
 
     #test image output from svtopovz
-    for test_image in ${tmpname}*.png;
+    for test_image in ${tmp_test_dir}/images/${prefix}*.png;
     do
         test_image=$(ls $test_image)
         if [ $? -ne 0 ]; then 

@@ -1,0 +1,107 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "svtopovz"
+dynamic = ["version"]
+description = "command line tool for generating visualizations of complex structural variation"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "Jonathan Belyeu", email = "jbelyeu@pacificbiosciences.com"}
+]
+license = {text = "BSD"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "matplotlib>=3.8.4",
+    "numpy==1.26.4",
+    "scikit-image>=0.24.0",
+    "cython>=3.0.10",
+    "Jinja2==3.1.5",
+    "tqdm==4.67.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.5",
+    "pytest-cov>=2.0",
+    "flake8>=3.8",
+    "mypy>=0.800",
+]
+
+[project.urls]
+Homepage = "https://github.com/PacificBiosciences/HiFi-SVTopo"
+Repository = "https://github.com/PacificBiosciences/HiFi-SVTopo"
+Issues = "https://github.com/PacificBiosciences/HiFi-SVTopo/issues"
+
+[project.scripts]
+svtopovz = "svtopovz.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["svtopovz*"]
+
+[tool.setuptools.package-data]
+svtopovz = ["templates/*", "templates/*.html", "templates/*.png", "LICENSE", "readme.md"]
+
+[tool.setuptools.dynamic]
+version = {attr = "svtopovz.__version__"}
+
+# Development tools configuration
+[tool.pytest.ini_options]
+testpaths = ["test/unit_test"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--cov=svtopovz",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-branch"
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning"
+]
+
+[tool.coverage.run]
+branch = true
+source = ["svtopovz"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "raise ImportError"
+]
+ignore_errors = true
+omit = [
+    "test/unit_test/*",
+    "setup.py"
+]
+
+[tool.flake8]
+max-line-length = 100
+exclude = [".git", "__pycache__", "build", "dist"]
+ignore = ["E203", "W503"]
+max-complexity = 10
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["matplotlib.*", "numpy.*"]
+ignore_missing_imports = true 

@@ -83,7 +83,7 @@ def ordered(obj):
 
 def compare_jsons(reference_json_path, test_json_path):
     """
-    Compare two json files from cnidaria and error if they don't match
+    Compare two json files from svtopo and error if they don't match
     """
     with open(reference_json_path, "r") as ref_fh:
         ref_json = json.load(ref_fh)
@@ -121,7 +121,7 @@ def compare_jsons(reference_json_path, test_json_path):
 
 def compare_text_files(reference_text_path, test_text_path):
     """
-    Compare two text files from cnidaria and error if they don't match
+    Compare two text files from svtopo and error if they don't match
     """
     with open(reference_text_path, "r") as ref_fh:
         ref_text = ref_fh.read().strip()
