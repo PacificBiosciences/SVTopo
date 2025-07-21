@@ -16,7 +16,7 @@ Key Features (see [Result Interpretation](docs/result_interpretation.md) for mor
 * Bottom section: chained plot highlighting deletion, duplication, and inversion effects on rearranged genome structure
 
 Example SVTopo image from HG002 rearrangement
-![](docs/imgs/complex_fully_connected.png)
+![](docs/imgs/complex_fully_connected.svg)
 
 ## Getting started
 * See the [Getting started](docs/user_guide.md#getting-started) section in the [User Guide](docs/user_guide.md) to start using SVTopo
