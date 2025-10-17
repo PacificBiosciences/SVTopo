@@ -134,7 +134,7 @@ Assuming the user has downloaded the RepeatMasker.bed file for Human GRCh38 as r
 svtopovz \
     --svtopo-dir my_svtopo_directory/ \
     --genes gencode.v48.basic.annotation.gtf.gz \
-    --bed-annotation repeatmasker.bed.gz
+    --annotation-bed repeatmasker.bed.gz
 ```
 The above command will result in images that show the genes with name and strand, plus repeatmasker annotations with name only. The strand information is included in the repeatmasker bed file, but some manipulation is required to match the SVTopoVz format expectation.
 
@@ -146,7 +146,7 @@ zgrep -iE "L1|L2|LINE|SVA" repeatmasker.bed.gz \
 svtopovz \
     --svtopo-dir my_svtopo_directory/ \
     --genes gencode.v48.basic.annotation.gtf.gz \
-    --bed-annotation repeatmasker.bed.gz retrotransposons.bed
+    --annotation-bed repeatmasker.bed.gz retrotransposons.bed
 ```
 
 For examples of how annotations are displayed, see [Result Interpretation](/docs/result_interpretation.md)
