@@ -29,6 +29,7 @@ SVTopo creates images to represent chimeric/split alignment evidence for structu
 
 <details>
 <summary>Expand for installation from Conda or GitHub</summary>
+
 #### Install from Conda
 SVTopo (distributed as a Rust binary) and the plotting utility SVTopoVz (Python) are both available from [Bioconda](https://bioconda.github.io/) on Linux. Assuming you have already installed [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html) and [mamba](https://mamba.readthedocs.io/en/latest/), the following example code creates a new environment with python v3.10, activates that environment, and installs both svtopo and svtopovz (as a dependency) into that environment. Note that these mamba commands work the same with conda, but mamba is recommended due to improved execution speed.
 
@@ -51,13 +52,14 @@ mamba install -y svtopovz
 #### Install from GitHub
 
 ##### SVTopo installation
+
 The `svtopo` Rust utility is available from the [Releases](https://github.com/PacificBiosciences/SVTopo/releases) page.
 
 It can be downloaded, extracted, and run directly on Linux systems. For example with version 0.2.0:
 ```bash
-wget https://github.com/PacificBiosciences/SVTopo/releases/download/v0.1.1/svvtopo_v0.2.0-x86_64-unknown-linux-gnu.tar.gz
-tar -zxvf svtopo_v0.1.1-x86_64-unknown-linux-gnu.tar.gz
-svtopo --version
+wget https://github.com/PacificBiosciences/SVTopo/releases/download/v0.3.0/svtopo-v0.3.0-x86_64-unknown-linux-gnu.tar.gz
+tar -zxvf svtopo-v0.3.0-x86_64-unknown-linux-gnu.tar.gz
+svtopo-v0.3.0-x86_64-unknown-linux-gnu/svtopo --version
 ```
 This will download the `svtopo` binary to the local directory and print out the version number.
 
