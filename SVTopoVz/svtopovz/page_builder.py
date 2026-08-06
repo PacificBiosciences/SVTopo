@@ -36,7 +36,7 @@ def create_metadata(region_info):
         "chrom2": None,
         "start": region_info["pos"],
         "end": region_info["end"],
-        "variant_ids": region_info["variant_ids"].sort(),
+        "variant_ids": sorted(region_info["variant_ids"]),
         "svlength": region_info["end"] - region_info["pos"],
         "samples": region_info["sample"],
         "nvariants": len(region_info["variant_ids"]),

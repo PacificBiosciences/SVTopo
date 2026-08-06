@@ -165,21 +165,13 @@ pub fn get_split_alignments(
     alignment_map
 }
 
-/// get the chromosome name from the header, adding the chr
-/// prefix if the genome is a known human reference.
+/// get the chromosome name from the header, unchanged from
+/// however it is named in the BAM.
 fn get_chrom_from_bam(bam_reader: &bam::Reader, record: &bam::Record) -> String {
     let tid = record.tid();
     assert!(tid >= 0);
     let chrom_bytes = bam::Read::header(bam_reader).tid2name(tid as u32);
-    let chrom = String::from_utf8(chrom_bytes.to_vec()).unwrap();
-
-    // if the genome reference is unrecognized, we can't assume it should or shouldn't have a chr prefix
-    // and if the reference is known but that prefix is already present, we need make no change
-    if chrom.get(0..3) == Some("chr") {
-        chrom
-    } else {
-        format!("chr{chrom}")
-    }
+    String::from_utf8(chrom_bytes.to_vec()).unwrap()
 }
 
 /// Stores any connections that are found, whether from mated BNDs or
@@ -396,22 +388,15 @@ fn add_bnd_connections(
     }
 }
 
-/// Gets the chromosome name from a vcf record or dies trying.
-/// Forces it to match the genome's expected chromosome if
-/// a known human reference is chosen.
+/// Gets the chromosome name from a vcf record or dies trying,
+/// unchanged from however it is named in the VCF header.
 fn get_vcf_record_chrom(
     record: &rust_htslib::bcf::Record,
     header: &bcf::header::HeaderView,
 ) -> String {
     if let Some(ref_id) = record.rid() {
         if let Ok(chrom_bytes) = header.rid2name(ref_id) {
-            let raw_chrom = String::from_utf8_lossy(chrom_bytes).to_string();
-            let has_prefix = raw_chrom.get(0..3) == Some("chr");
-            if has_prefix {
-                return raw_chrom;
-            } else {
-                return format!("chr{raw_chrom}");
-            }
+            return String::from_utf8_lossy(chrom_bytes).to_string();
         }
         error!(
             "Error reading VCF: Chromosome {ref_id} missing from header"

@@ -20,9 +20,7 @@ Example SVTopo image from HG002 rearrangement
 
 ## Getting started
 * See the [Getting started](docs/user_guide.md#getting-started) section in the [User Guide](docs/user_guide.md) to start using SVTopo
-* There's help to understand the results at [Result interpretation](docs/result_interpretation.md)
-* An example site of images from seven genomes is viewable at https://pacificbiosciences.github.io/SVTopo/
-
+* See also [Result interpretation](docs/result_interpretation.md) for examples and explanation of SVTopo images
 
 
 ## Support information

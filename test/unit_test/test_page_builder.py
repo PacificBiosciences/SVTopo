@@ -54,7 +54,7 @@ class TestPageBuilder:
         assert result["samples"] == "sample1"
         assert result["nvariants"] == 2
         assert result["image_name"] == "sample1_chr1-1000-2000"
-        assert result["variant_ids"] is None  # .sort() returns None
+        assert result["variant_ids"] == ["var1", "var2"]
 
     def test_create_metadata_empty_variant_ids(self):
         """Test create_metadata with empty variant_ids"""
@@ -69,7 +69,7 @@ class TestPageBuilder:
         result = create_metadata(region_info)
         
         assert result["nvariants"] == 0
-        assert result["variant_ids"] is None
+        assert result["variant_ids"] == []
 
     def test_create_metadata_single_variant(self):
         """Test create_metadata with single variant"""
